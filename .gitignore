@@ -1,0 +1,71 @@
+# ── Python ────────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+venv/
+env/
+.venv/
+.env/
+ENV/
+
+# Pytest / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Mypy / type checkers
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# ── Secrets & environment ─────────────────────────────────────────────────────
+.env
+*.env.local
+*.env.production
+
+# ── Uploads (runtime data, not source) ───────────────────────────────────────
+backend/uploads/
+
+# ── Alembic runtime ───────────────────────────────────────────────────────────
+# Keep migrations tracked; only ignore generated artefacts
+*.pyc
+
+# ── Node / Frontend ───────────────────────────────────────────────────────────
+node_modules/
+frontend/dist/
+frontend/.vite/
+*.local
+
+# ── IDEs / editors ───────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# ── Logs ─────────────────────────────────────────────────────────────────────
+*.log
+logs/

@@ -1,0 +1,38 @@
+# ── Web framework ─────────────────────────────────────────────────────────────
+fastapi==0.115.5
+uvicorn[standard]==0.32.1
+python-multipart==0.0.18
+
+# ── Database ──────────────────────────────────────────────────────────────────
+sqlalchemy==2.0.36
+alembic==1.14.0
+psycopg2-binary==2.9.10
+
+# ── Config & secrets ──────────────────────────────────────────────────────────
+python-dotenv==1.0.1
+cryptography==43.0.3
+
+# ── Google / Gmail OAuth ──────────────────────────────────────────────────────
+google-auth==2.36.0
+google-auth-oauthlib==1.2.1
+google-api-python-client==2.154.0
+
+# ── LLM extraction fallback ───────────────────────────────────────────────────
+anthropic==0.40.0
+
+# ── OCR & document parsing ────────────────────────────────────────────────────
+pytesseract==0.3.13
+pdf2image==1.17.0
+pypdf==5.1.0
+pdfplumber==0.11.4
+Pillow==11.0.0
+
+# ── HTTP client (timeouts, async calls) ───────────────────────────────────────
+httpx==0.28.0
+
+# ── Pydantic (FastAPI ships with v2) ─────────────────────────────────────────
+pydantic==2.10.2
+pydantic-settings==2.6.1
+
+# ── Utilities ─────────────────────────────────────────────────────────────────
+python-dateutil==2.9.0.post0
