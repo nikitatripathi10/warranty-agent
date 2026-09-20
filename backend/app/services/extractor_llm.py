@@ -1,15 +1,15 @@
 """
-Pass 2 extraction — Anthropic Claude LLM fallback.
+Pass 2 extraction — Google Gemini LLM fallback.
 
 Called when the regex pass returns confidence == 'low'.  We send the cleaned
-email/document text to Claude with a structured prompt + few-shot examples and
+email/document text to Gemini with a structured prompt + few-shot examples and
 expect a JSON response matching ExtractionResult fields.
 
 Design principles:
-- Hard timeout (ANTHROPIC_TIMEOUT_SECONDS) on every API call.
+- Hard timeout on every API call.
 - Malformed JSON responses are caught and logged; we return None rather than crash.
 - The model is instructed explicitly to output confidence='low' rather than guess.
-- Prompt includes 2 few-shot examples to anchor the model's output format.
+- Prompt includes few-shot examples to anchor the model's output format.
 """
 
 from __future__ import annotations
@@ -21,7 +21,7 @@ from datetime import date
 from decimal import Decimal, InvalidOperation
 from typing import Optional
 
-import anthropic
+import google.generativeai as genai
 from dotenv import load_dotenv
 
 from app.services.extractor_regex import ExtractionResult
@@ -30,9 +30,8 @@ load_dotenv()
 
 logger = logging.getLogger(__name__)
 
-_ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
-_ANTHROPIC_TIMEOUT = float(os.getenv("ANTHROPIC_TIMEOUT_SECONDS", "30"))
-_MODEL = "claude-haiku-4-5"  # Fast + cheap — ideal for structured extraction
+_GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+_MODEL = "gemini-1.5-flash"  # Fast + cheap — ideal for structured extraction
 
 # ── Prompt templates ──────────────────────────────────────────────────────────
 
@@ -63,10 +62,8 @@ Rules:
 5. purchase_date must be ISO 8601 (YYYY-MM-DD).
 6. warranty_period_months: convert years to months (1 year = 12 months).
 7. return_window_days: integer number of days in the return/replacement window.
-8. MULTILINGUAL: The input may be written in Hindi, Hinglish (Hindi+English mix), or any
-   other regional-language format. You MUST still extract all fields correctly and return
-   them using the same English-keyed JSON schema above. Translate product names and brands
-   to their standard English/brand-name form where possible; if not possible, transliterate.
+8. MULTILINGUAL: The input may be in Hindi, Hinglish, or any regional-language format.
+   You MUST still extract all fields correctly and return them in the English-keyed JSON schema.
 """
 
 _FEW_SHOT_EXAMPLES = """
@@ -103,7 +100,7 @@ Total charged: ₹3,500
 OUTPUT:
 {"product_name": null, "brand": null, "retailer": null, "purchase_date": null, "price": 3500.00, "warranty_period_months": null, "return_window_days": null, "confidence": "low"}
 
---- EXAMPLE 4 (Hindi / Hinglish — extract fields into English-keyed JSON) ---
+--- EXAMPLE 4 (Hindi / Hinglish) ---
 INPUT:
 प्रिय ग्राहक,
 आपका Meesho ऑर्डर confirm ho gaya hai.
@@ -120,6 +117,8 @@ OUTPUT:
 """
 
 _USER_PROMPT_TEMPLATE = """\
+{system}
+
 {few_shot}
 
 Now extract from the following text:
@@ -134,71 +133,53 @@ OUTPUT:"""
 
 def extract_with_llm(text: str) -> Optional[ExtractionResult]:
     """
-    Send text to Claude and parse the structured JSON response.
-
-    Args:
-        text: Cleaned email/document text (not stored anywhere after this call).
+    Send text to Gemini and parse the structured JSON response.
 
     Returns:
         ExtractionResult with pass_used='llm', or None if the API call fails
         or the response is not valid JSON matching the schema.
     """
-    if not _ANTHROPIC_API_KEY:
+    if not _GEMINI_API_KEY:
         logger.warning(
-            "ANTHROPIC_API_KEY not set — LLM extraction fallback disabled. "
-            "Set the key in .env to enable it."
+            "GEMINI_API_KEY not set — LLM extraction fallback disabled. "
+            "Set the key in .env or Railway Variables to enable it."
         )
         return None
 
-    # Truncate very long documents to avoid hitting context limits / cost
+    # Truncate very long documents to avoid hitting context limits
     max_chars = 8_000
     truncated_text = text[:max_chars]
     if len(text) > max_chars:
         logger.info("LLM input truncated from %d to %d chars", len(text), max_chars)
 
-    user_prompt = _USER_PROMPT_TEMPLATE.format(
+    prompt = _USER_PROMPT_TEMPLATE.format(
+        system=_SYSTEM_PROMPT,
         few_shot=_FEW_SHOT_EXAMPLES,
         text=truncated_text,
     )
 
-    client = anthropic.Anthropic(api_key=_ANTHROPIC_API_KEY)
-
     try:
-        response = client.messages.create(
-            model=_MODEL,
-            max_tokens=512,
-            timeout=_ANTHROPIC_TIMEOUT,
-            system=_SYSTEM_PROMPT,
-            messages=[{"role": "user", "content": user_prompt}],
+        genai.configure(api_key=_GEMINI_API_KEY)
+        model = genai.GenerativeModel(_MODEL)
+        response = model.generate_content(
+            prompt,
+            generation_config=genai.types.GenerationConfig(
+                temperature=0.0,
+                max_output_tokens=512,
+            ),
         )
-    except anthropic.APITimeoutError:
-        logger.error(
-            "Anthropic API timed out after %.0f seconds — skipping LLM extraction",
-            _ANTHROPIC_TIMEOUT,
-        )
-        return None
-    except anthropic.APIStatusError as exc:
-        logger.error("Anthropic API error (status %s): %s", exc.status_code, exc.message)
-        return None
+        raw_content = response.text if response.text else ""
     except Exception as exc:
-        logger.error("Unexpected error calling Anthropic API: %s", exc)
+        logger.error("Gemini API error: %s", exc)
         return None
 
-    raw_content = response.content[0].text if response.content else ""
     return _parse_llm_response(raw_content)
 
 
 def _parse_llm_response(raw: str) -> Optional[ExtractionResult]:
-    """
-    Parse Claude's raw text output into an ExtractionResult.
-
-    Handles:
-    - Clean JSON
-    - JSON wrapped in markdown code fences (```json ... ```)
-    - Partial / malformed JSON (logs error, returns None)
-    """
-    # Strip possible markdown code fences
+    """Parse Gemini's raw text output into an ExtractionResult."""
     clean = raw.strip()
+    # Strip possible markdown code fences
     if clean.startswith("```"):
         lines = clean.splitlines()
         clean = "\n".join(
@@ -215,9 +196,7 @@ def _parse_llm_response(raw: str) -> Optional[ExtractionResult]:
         )
         return None
 
-    # Build ExtractionResult from the parsed dict
     result = ExtractionResult(pass_used="llm")
-
     result.product_name = _str_or_none(data.get("product_name"))
     result.brand = _str_or_none(data.get("brand"))
     result.retailer = _str_or_none(data.get("retailer"))
