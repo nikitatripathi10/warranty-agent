@@ -18,6 +18,7 @@ import json
 import logging
 import os
 from datetime import datetime
+from urllib.parse import urlencode
 
 from dotenv import load_dotenv
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -101,7 +102,7 @@ def gmail_connect():
         raise HTTPException(status_code=500, detail="Failed to initiate OAuth flow") from exc
 
 
-@router.get("/callback", response_model=OAuthCallbackResponse, summary="Handle Google OAuth callback")
+@router.get("/callback", summary="Handle Google OAuth callback")
 def gmail_callback(
     code: str,
     state: str | None = None,
@@ -207,4 +208,10 @@ def gmail_callback(
         ) from exc
 
     logger.info("OAuth flow complete for user %s (id=%s)", email, user.id)
-    return OAuthCallbackResponse(user_id=user.id, email=user.email)
+    
+    frontend_origin = os.getenv("FRONTEND_ORIGIN", "http://localhost:5173").strip()
+    redirect_url = f"{frontend_origin}/?" + urlencode({
+        "user_id": str(user.id),
+        "email": user.email
+    })
+    return RedirectResponse(url=redirect_url)
