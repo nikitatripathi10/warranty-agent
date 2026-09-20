@@ -47,7 +47,7 @@ _GMAIL_SCOPES = [
 
 _GOOGLE_CLIENT_ID     = os.getenv("GOOGLE_CLIENT_ID")
 _GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
-_GOOGLE_REDIRECT_URI  = os.getenv("GOOGLE_REDIRECT_URI", "http://localhost:8000/auth/gmail/callback")
+_GOOGLE_REDIRECT_URI  = os.getenv("GOOGLE_REDIRECT_URI", "http://localhost:8000/auth/gmail/callback").strip()
 
 
 def _build_flow() -> Flow:
@@ -125,14 +125,27 @@ def gmail_callback(
 
     # -- Exchange code for tokens --
     try:
+        # Relax scope checking since Google may return fewer scopes if the user didn't check the box
+        os.environ["OAUTHLIB_RELAX_TOKEN_SCOPE"] = "1"
+        
         flow = _build_flow()
         flow.fetch_token(code=code)
         credentials: Credentials = flow.credentials
-    except Exception as exc:
-        logger.error("Token exchange failed: %s", exc)
+        
+        # Check if the user actually granted the Gmail scope
+        if not credentials.has_scopes(["https://www.googleapis.com/auth/gmail.readonly"]):
+            raise ValueError("Gmail read scope was not granted.")
+    except ValueError as exc:
+        logger.error("User did not grant Gmail scope")
         raise HTTPException(
             status_code=400,
-            detail="Failed to exchange authorization code for tokens. Try connecting again.",
+            detail="You must check the box to grant Gmail read access on the Google consent screen. Please try connecting again.",
+        ) from exc
+    except Exception as exc:
+        logger.error("Token exchange failed: %s", exc, exc_info=True)
+        raise HTTPException(
+            status_code=400,
+            detail=f"Failed to exchange authorization code for tokens. Reason: {exc}",
         ) from exc
 
     # -- Fetch user's Gmail address from Google --
