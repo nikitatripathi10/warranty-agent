@@ -73,8 +73,36 @@ class PurchaseOut(BaseModel):
     source_type: str
     source_email_id: Optional[str] = None
     source_file_ref: Optional[str] = None
+    family_member: Optional[str] = None
+    household_member: Optional[str] = None
+    registration_required: bool = False
+    registration_url: Optional[str] = None
     created_at: datetime
     warranty_period: Optional[WarrantyPeriodOut] = None
+
+
+class PurchaseEditRequest(BaseModel):
+    """Request body for manually editing a purchase record."""
+
+    product_name: Optional[str] = Field(None, max_length=512)
+    brand: Optional[str] = Field(None, max_length=255)
+    retailer: Optional[str] = Field(None, max_length=255)
+    purchase_date: Optional[date] = None
+    price: Optional[Decimal] = None
+    family_member: Optional[str] = Field(None, max_length=100)
+    registration_required: Optional[bool] = None
+    registration_url: Optional[str] = Field(None, max_length=1024)
+    # Warranty period overrides
+    warranty_end_date: Optional[date] = None
+    return_window_end_date: Optional[date] = None
+
+
+class PurchasesListResponse(BaseModel):
+    """Response for listing all purchases for a user."""
+
+    user_id: uuid.UUID
+    total: int
+    purchases: list[PurchaseOut]
 
 
 # ── Ingestion schemas ─────────────────────────────────────────────────────────
@@ -117,3 +145,64 @@ class ExtractionTestRequest(BaseModel):
         None,
         description="Optional source hint: 'amazon', 'flipkart', etc.",
     )
+
+
+# ── Alert schemas ─────────────────────────────────────────────────────────────
+
+class AlertOut(BaseModel):
+    """A single upcoming or historical alert."""
+
+    alert_id: str
+    purchase_id: str
+    product_name: Optional[str] = None
+    brand: Optional[str] = None
+    retailer: Optional[str] = None
+    alert_type: str
+    fire_date: str
+    days_until: int
+    is_overdue: bool
+
+
+class AlertsListResponse(BaseModel):
+    """Response for listing alerts for a user."""
+
+    user_id: uuid.UUID
+    total: int
+    alerts: list[AlertOut]
+
+
+# ── Agent / chat schemas ──────────────────────────────────────────────────────
+
+class AgentQueryRequest(BaseModel):
+    """Request for the chat-style warranty agent."""
+
+    user_id: uuid.UUID
+    question: str = Field(..., min_length=1, max_length=500, description="User's natural-language question")
+
+
+class AgentQueryResponse(BaseModel):
+    """Response from the warranty agent."""
+
+    answer: str
+    user_id: uuid.UUID
+
+
+# ── Recall schemas ────────────────────────────────────────────────────────────
+
+class RecallOut(BaseModel):
+    """A product recall record."""
+
+    id: str
+    brand: Optional[str] = None
+    product_model: Optional[str] = None
+    description: Optional[str] = None
+    source_url: Optional[str] = None
+    date_found: Optional[str] = None
+
+
+class RecallCheckResponse(BaseModel):
+    """Result of running a recall check for a user."""
+
+    user_id: uuid.UUID
+    purchases_checked: int
+    recall_matches: int

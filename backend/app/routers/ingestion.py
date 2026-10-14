@@ -44,6 +44,9 @@ from app.services.gmail_client import (
     search_order_emails,
 )
 from app.services.ocr import extract_text
+from app.services.vendor_normalizer import normalize_vendor
+from app.services.category_fallback import apply_category_fallback
+from app.services.alert_engine import create_alerts_for_purchase
 
 load_dotenv()
 
@@ -133,11 +136,14 @@ def _persist_purchase(
     source_file_ref: Optional[str] = None,
 ) -> Purchase:
     """Create and commit a Purchase + WarrantyPeriod row from an ExtractionResult."""
+    # Normalise retailer to canonical form before saving
+    canonical_retailer = normalize_vendor(result.retailer) or result.retailer
+
     purchase = Purchase(
         user_id=user_id,
         product_name=result.product_name,
         brand=result.brand,
-        retailer=result.retailer,
+        retailer=canonical_retailer,
         purchase_date=result.purchase_date,
         price=result.price,
         source_type=source_type,
@@ -147,21 +153,39 @@ def _persist_purchase(
     db.add(purchase)
     db.flush()  # Get the purchase.id before committing
 
+    # Apply category fallback for missing warranty / return-window data
+    fallback = apply_category_fallback(
+        product_name=result.product_name,
+        brand=result.brand,
+        existing_warranty_months=result.warranty_period_months,
+        existing_return_days=result.return_window_days,
+    )
+
+    warranty_end = _compute_warranty_end(
+        result.purchase_date, fallback["warranty_period_months"]
+    )
+    return_end = _compute_return_window_end(
+        result.purchase_date, fallback["return_window_days"]
+    )
+
+    # is_estimated: True if category fallback was used OR if LLM was the source
+    is_estimated = fallback["is_estimated"] or (result.pass_used == "llm")
+
     warranty = WarrantyPeriod(
         purchase_id=purchase.id,
-        warranty_end_date=_compute_warranty_end(
-            result.purchase_date, result.warranty_period_months
-        ),
-        return_window_end_date=_compute_return_window_end(
-            result.purchase_date, result.return_window_days
-        ),
+        warranty_end_date=warranty_end,
+        return_window_end_date=return_end,
         confidence_score=result.confidence,
         source_snippet=result.source_snippet or f"[pass={result.pass_used}]",
-        is_estimated=(result.pass_used == "llm"),
+        is_estimated=is_estimated,
     )
     db.add(warranty)
     db.commit()
     db.refresh(purchase)
+
+    # Schedule alerts for the newly persisted purchase
+    create_alerts_for_purchase(db, purchase, warranty)
+
     return purchase
 
 

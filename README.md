@@ -2,10 +2,11 @@
 
 Automatically tracks purchases from Gmail order-confirmation emails and uploaded
 documents (invoices, warranty cards), extracts product/warranty/return-window
-information, and stores it in a structured database for future alerting.
+information, stores it in a structured database, schedules expiry alerts,
+and answers natural-language warranty queries via a built-in AI agent.
 
-> **Milestone 2** — Document processing + purchase repository.
-> Alerting, recall watching, and the chat agent are later milestones.
+> **Milestone 3** — Warranty agent + automated tracking + 4-screen dashboard.
+> Milestone 4 (validation) and 5 (deployment) are next.
 
 ---
 
@@ -30,14 +31,32 @@ information, and stores it in a structured database for future alerting.
 Gmail / Uploaded file
         │
         ▼
-  Ingestion layer  ──►  Pass 1: Regex extractor (Amazon.in, Flipkart, generic)
+  Ingestion layer  ──►  Pass 1: Regex extractor (Amazon, Flipkart, Meesho, Ajio, generic)
   (routers/)               │  confidence == 'low'?
                            ▼
-                      Pass 2: Claude LLM fallback (Anthropic API)
+                      Pass 2: Gemini LLM fallback
+                           │
+                           ▼
+                   Vendor Normaliser  →  canonical retailer name
+                           │
+                           ▼
+                   Category Fallback  →  estimated warranty / return window
                            │
                            ▼
                    purchases + warranty_periods (PostgreSQL)
+                           │
+                           ▼
+                   Alert Engine (APScheduler)  →  alerts table
+                           │
+                           ▼
+                   Recall Watcher (rapidfuzz)  →  recall alerts
 ```
+
+**4-Screen Dashboard (React):**
+- **Dashboard** — purchase card grid with urgency color-coding
+- **Item Detail** — all fields, confidence explanation, manual edit, AI agent chat
+- **Alerts** — upcoming return-window / warranty-expiry / recall alerts
+- **Upload / Lookup** — document upload and extraction test
 
 **Tech stack:**
 - Backend: Python 3.11+, FastAPI, Uvicorn
@@ -45,9 +64,11 @@ Gmail / Uploaded file
 - Database: PostgreSQL (Supabase / Neon / any hosted instance via `DATABASE_URL`)
 - Frontend: React (Vite), plain `fetch`
 - Auth to Gmail: OAuth 2.0 via `google-auth-oauthlib`
-- Extraction: regex rules → Anthropic Claude API fallback
+- Extraction: regex rules → Google Gemini Flash LLM fallback
 - OCR: `pdfplumber` (text PDFs) → `pdf2image` + `pytesseract` (scanned PDFs/images)
 - Encryption at rest: `cryptography.Fernet` for OAuth refresh tokens
+- Alert scheduling: `APScheduler` (BackgroundScheduler, daily cron)
+- Recall matching: `rapidfuzz` fuzzy string matching
 
 ---
 
@@ -63,15 +84,18 @@ Copy `backend/.env.example` to `backend/.env` and fill in every value.
 | `GOOGLE_CLIENT_ID` | From Google Cloud Console (Web application OAuth 2.0 client) |
 | `GOOGLE_CLIENT_SECRET` | From Google Cloud Console |
 | `GOOGLE_REDIRECT_URI` | Must match what you registered; `http://localhost:8000/auth/gmail/callback` for local dev |
-| `ANTHROPIC_API_KEY` | Your Anthropic API key for the Claude LLM extraction fallback |
+| `GEMINI_API_KEY` | Google Gemini API key for LLM extraction fallback + AI agent |
 | `FRONTEND_ORIGIN` | CORS allowed origin, e.g. `http://localhost:5173` |
 | `UPLOAD_DIR` | Directory for uploaded files (default: `uploads`, relative to `backend/`) |
 | `POPPLER_PATH` | *(Windows only)* Path to Poppler `bin/` for `pdf2image` |
+| `EXTRA_FRONTEND_ORIGINS` | *(Optional)* Comma-separated extra CORS origins for production |
 
 **Generate a Fernet key:**
 ```bash
 python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
 ```
+
+**Get a Gemini API key:** [makersuite.google.com/app/apikey](https://makersuite.google.com/app/apikey)
 
 ---
 
@@ -224,12 +248,22 @@ The resulting text is fed into the same Pass 1 / Pass 2 pipeline.
 
 | Method | Path | Description |
 |---|---|---|
-| GET | `/health` | Liveness probe |
-| GET | `/auth/gmail/connect` | Redirect to Google OAuth consent |
-| GET | `/auth/gmail/callback` | Handle OAuth callback, return `user_id` |
-| POST | `/ingestion/fetch-emails?user_id=<uuid>` | Fetch Gmail order emails, extract, persist |
-| POST | `/ingestion/upload` | Upload PDF/image, OCR, extract, persist |
+| GET  | `/health` | Liveness probe |
+| GET  | `/auth/gmail/connect` | Redirect to Google OAuth consent |
+| GET  | `/auth/gmail/callback` | Handle OAuth callback, return `user_id` |
+| POST | `/ingestion/fetch-emails?user_id=<uuid>` | Fetch Gmail order emails, extract, persist, schedule alerts |
+| POST | `/ingestion/upload` | Upload PDF/image, OCR, extract, persist, schedule alerts |
 | POST | `/extraction/test` | Test extraction on raw text (no DB write) |
+| GET  | `/purchases?user_id=<uuid>` | List all purchases (sortable by urgency/date/created) |
+| GET  | `/purchases/{id}?user_id=<uuid>` | Get a single purchase with warranty period |
+| PATCH | `/purchases/{id}?user_id=<uuid>` | Manually edit purchase + warranty fields |
+| DELETE | `/purchases/{id}?user_id=<uuid>` | Delete a purchase (cascades to alerts) |
+| GET  | `/alerts?user_id=<uuid>` | List upcoming alerts (next 30 days by default) |
+| GET  | `/alerts/history?user_id=<uuid>` | List past (sent) alerts |
+| POST | `/alerts/backfill?user_id=<uuid>` | Create missing alert rows for all purchases |
+| POST | `/alerts/recall-check?user_id=<uuid>` | Fuzzy-match user products against recall DB |
+| GET  | `/alerts/recalls` | List all known product recall records |
+| POST | `/agent/query` | Ask the AI agent a warranty question |
 
 Full interactive docs: `http://localhost:8000/docs`
 

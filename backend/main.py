@@ -18,6 +18,7 @@ load_dotenv()
 
 from app.database import engine, Base  # noqa: E402 — after load_dotenv
 from app.routers import health, auth_gmail, ingestion, extraction  # noqa: E402
+from app.routers import purchases, alerts, agent  # noqa: E402
 
 # ── Logging setup ─────────────────────────────────────────────────────────────
 
@@ -33,11 +34,18 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):  # type: ignore[type-arg]
-    """Create DB tables on startup (Alembic handles migrations; this is a safety net)."""
-    logger.info("Warranty Radar backend starting up")
+    """Start background scheduler on startup; shut it down cleanly on exit."""
+    logger.info("Warranty Radar backend starting up (Milestone 3)")
+
     # Tables are managed by Alembic migrations; Base.metadata.create_all is NOT
     # called here to avoid bypassing migration history.
+
+    # Start the daily alert scheduler
+    from app.services.alert_engine import start_scheduler
+    start_scheduler()
+
     yield
+
     logger.info("Warranty Radar backend shutting down")
 
 
@@ -45,8 +53,11 @@ async def lifespan(app: FastAPI):  # type: ignore[type-arg]
 
 app = FastAPI(
     title="Warranty Radar API",
-    description="Tracks purchases from Gmail and uploaded documents, extracts warranty data.",
-    version="0.2.0",  # Milestone 2
+    description=(
+        "Tracks purchases from Gmail and uploaded documents, extracts warranty data, "
+        "schedules alerts, and answers natural-language queries about your purchases."
+    ),
+    version="0.3.0",  # Milestone 3
     docs_url="/docs",
     redoc_url="/redoc",
     lifespan=lifespan,
@@ -59,7 +70,9 @@ _extra_origins = os.getenv("EXTRA_FRONTEND_ORIGINS", "")
 
 _allowed_origins = [_frontend_origin]
 if _extra_origins:
-    _allowed_origins += [o.strip() for o in _extra_origins.split(",") if o.strip()]
+    _allowed_origins.extend(
+        o.strip() for o in _extra_origins.split(",") if o.strip()
+    )
 
 app.add_middleware(
     CORSMiddleware,
@@ -71,7 +84,10 @@ app.add_middleware(
 
 # ── Routers ───────────────────────────────────────────────────────────────────
 
-app.include_router(health.router, tags=["Health"])
-app.include_router(auth_gmail.router, prefix="/auth/gmail", tags=["Auth — Gmail OAuth"])
-app.include_router(ingestion.router, prefix="/ingestion", tags=["Ingestion"])
-app.include_router(extraction.router, prefix="/extraction", tags=["Extraction"])
+app.include_router(health.router,        prefix="/health",      tags=["Health"])
+app.include_router(auth_gmail.router,    prefix="/auth/gmail",  tags=["Auth"])
+app.include_router(ingestion.router,     prefix="/ingestion",   tags=["Ingestion"])
+app.include_router(extraction.router,    prefix="/extraction",  tags=["Extraction"])
+app.include_router(purchases.router,     prefix="/purchases",   tags=["Purchases"])
+app.include_router(alerts.router,        prefix="/alerts",      tags=["Alerts"])
+app.include_router(agent.router,         prefix="/agent",       tags=["Agent"])

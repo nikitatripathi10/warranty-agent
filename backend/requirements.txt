@@ -17,7 +17,7 @@ google-auth==2.36.0
 google-auth-oauthlib==1.2.1
 google-api-python-client==2.154.0
 
-# ── LLM extraction fallback ───────────────────────────────────────────────────
+# ── LLM extraction fallback & agent (Google Gemini) ──────────────────────────
 google-generativeai==0.8.3
 
 # ── OCR & document parsing ────────────────────────────────────────────────────
@@ -36,3 +36,13 @@ pydantic-settings==2.6.1
 
 # ── Utilities ─────────────────────────────────────────────────────────────────
 python-dateutil==2.9.0.post0
+
+# ── Milestone 3: Alert scheduling ─────────────────────────────────────────────
+apscheduler==3.10.4
+
+# ── Milestone 3: Fuzzy recall matching ───────────────────────────────────────
+rapidfuzz==3.10.1
+
+# ── Testing ───────────────────────────────────────────────────────────────────
+pytest==8.3.4
+pytest-mock==3.14.0
