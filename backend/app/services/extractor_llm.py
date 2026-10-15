@@ -21,7 +21,10 @@ from datetime import date
 from decimal import Decimal, InvalidOperation
 from typing import Optional
 
-import google.generativeai as genai
+try:
+    import google.generativeai as genai
+except ImportError:
+    genai = None  # SDK not installed — LLM pass will be skipped gracefully
 from dotenv import load_dotenv
 
 from app.services.extractor_regex import ExtractionResult
@@ -139,6 +142,13 @@ def extract_with_llm(text: str) -> Optional[ExtractionResult]:
         ExtractionResult with pass_used='llm', or None if the API call fails
         or the response is not valid JSON matching the schema.
     """
+    if genai is None:
+        logger.warning(
+            "google-generativeai SDK not installed — LLM extraction disabled. "
+            "pip install google-generativeai to enable it."
+        )
+        return None
+
     if not _GEMINI_API_KEY:
         logger.warning(
             "GEMINI_API_KEY not set — LLM extraction fallback disabled. "

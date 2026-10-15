@@ -86,7 +86,8 @@ _CATEGORIES: list[tuple[str, int, int, list[str]]] = [
         12,
         7,
         ["mixer", "grinder", "juicer", "blender", "toaster", "coffee maker",
-         "water purifier", "ro purifier", "iron box", "steam iron"],
+         "water purifier", "ro purifier", "iron box", "steam iron",
+         "water heater", "geyser", "instant heater", "kettle"],
     ),
     (
         "Camera",

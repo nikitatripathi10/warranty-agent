@@ -1,0 +1,562 @@
+[
+  {
+    "id": "TC001",
+    "source": "email",
+    "retailer_hint": "amazon",
+    "text": "Dear Customer,\nThank you for your order from Amazon.in\nOrder #405-9812345-0123456 placed on 15 August 2025.\n1 x Sony WH-1000XM5 Wireless Headphones (Black)\nOrder Total: ₹28,990.00\n1-year manufacturer's warranty included.\nReturn within 30 days of delivery.",
+    "ground_truth": {
+      "product_name": "Sony WH-1000XM5 Wireless Headphones (Black)",
+      "brand": "Sony",
+      "retailer": "Amazon",
+      "purchase_date": "2025-08-15",
+      "price": 28990.00,
+      "warranty_period_months": 12,
+      "return_window_days": 30,
+      "confidence_min": "medium"
+    }
+  },
+  {
+    "id": "TC002",
+    "source": "email",
+    "retailer_hint": "amazon",
+    "text": "Hello Rahul,\nYour Amazon.in order #406-1234567-8901234 was placed on September 3, 2025.\n1 x boAt Airdopes 141 TWS Earbuds (Bold Black)\nOrder Total: ₹1,299.00\n7-day replacement window.\nSeller: Imagine Marketing Pvt Ltd",
+    "ground_truth": {
+      "product_name": "boAt Airdopes 141 TWS Earbuds (Bold Black)",
+      "brand": "boAt",
+      "retailer": "Amazon",
+      "purchase_date": "2025-09-03",
+      "price": 1299.00,
+      "warranty_period_months": null,
+      "return_window_days": 7,
+      "confidence_min": "medium"
+    }
+  },
+  {
+    "id": "TC003",
+    "source": "email",
+    "retailer_hint": "amazon",
+    "text": "Amazon.in Order Confirmation\nOrder ID: 407-9876543-2109876\nOrdered on: 20 October 2025\n1 x Samsung 65-Inch Crystal 4K Smart TV (UA65AUE60AKLXL)\nGrand Total: ₹54,990.00\n1 year comprehensive warranty\n30-day return policy",
+    "ground_truth": {
+      "product_name": "Samsung 65-Inch Crystal 4K Smart TV (UA65AUE60AKLXL)",
+      "brand": "Samsung",
+      "retailer": "Amazon",
+      "purchase_date": "2025-10-20",
+      "price": 54990.00,
+      "warranty_period_months": 12,
+      "return_window_days": 30,
+      "confidence_min": "medium"
+    }
+  },
+  {
+    "id": "TC004",
+    "source": "email",
+    "retailer_hint": "flipkart",
+    "text": "Hi Ananya,\nYour Flipkart order OD126789012345678901 has been confirmed.\nOrder Date: 10 September 2025\nProduct Name: Boat Airdopes 411 Pro True Wireless Earbuds\nTotal Amount: ₹1,799\n7-day replacement guarantee.",
+    "ground_truth": {
+      "product_name": "Boat Airdopes 411 Pro True Wireless Earbuds",
+      "brand": "Boat",
+      "retailer": "Flipkart",
+      "purchase_date": "2025-09-10",
+      "price": 1799.00,
+      "warranty_period_months": null,
+      "return_window_days": 7,
+      "confidence_min": "medium"
+    }
+  },
+  {
+    "id": "TC005",
+    "source": "email",
+    "retailer_hint": "flipkart",
+    "text": "Flipkart Order Confirmed!\nOrder ID: OD224567890123456789\nOrder Date: 05 August 2025\nProduct Name: Redmi Note 13 Pro 5G (Midnight Black, 8GB RAM, 256GB)\nOrder Total: ₹24,999\n1 year manufacturer warranty\n10-day replacement only policy",
+    "ground_truth": {
+      "product_name": "Redmi Note 13 Pro 5G (Midnight Black, 8GB RAM, 256GB)",
+      "brand": "Redmi",
+      "retailer": "Flipkart",
+      "purchase_date": "2025-08-05",
+      "price": 24999.00,
+      "warranty_period_months": 12,
+      "return_window_days": 10,
+      "confidence_min": "medium"
+    }
+  },
+  {
+    "id": "TC006",
+    "source": "email",
+    "retailer_hint": "flipkart",
+    "text": "Dear Customer,\nYour Flipkart order OD334512367890123456 is confirmed.\nOrder Date: 12 July 2025\nProduct Name: LG 8 kg 5 Star Inverter Direct Drive Front Loading Washing Machine\nAmount Payable: ₹38,990\n2-year comprehensive warranty included\n10-day return window",
+    "ground_truth": {
+      "product_name": "LG 8 kg 5 Star Inverter Direct Drive Front Loading Washing Machine",
+      "brand": "LG",
+      "retailer": "Flipkart",
+      "purchase_date": "2025-07-12",
+      "price": 38990.00,
+      "warranty_period_months": 24,
+      "return_window_days": 10,
+      "confidence_min": "medium"
+    }
+  },
+  {
+    "id": "TC007",
+    "source": "email",
+    "retailer_hint": "meesho",
+    "text": "Hi Priya,\nYour Meesho order has been confirmed!\nOrder ID: 987654321012\nProduct Name: Campus Women Running Shoes\nOrder Date: 05-08-2025\nOrder Total: Rs. 1,299\n7 days return policy applicable.",
+    "ground_truth": {
+      "product_name": "Campus Women Running Shoes",
+      "brand": null,
+      "retailer": "Meesho",
+      "purchase_date": "2025-08-05",
+      "price": 1299.00,
+      "warranty_period_months": null,
+      "return_window_days": 7,
+      "confidence_min": "medium"
+    }
+  },
+  {
+    "id": "TC008",
+    "source": "email",
+    "retailer_hint": "meesho",
+    "text": "Dear Deepak,\nYour Meesho order is confirmed!\nOrder ID: 112233445566\nProduct Name: Fastrack Analog Watch for Men (NM3294SL01)\nOrder Date: 22-09-2025\nOrder Total: Rs. 899\n7 days return policy",
+    "ground_truth": {
+      "product_name": "Fastrack Analog Watch for Men (NM3294SL01)",
+      "brand": "Fastrack",
+      "retailer": "Meesho",
+      "purchase_date": "2025-09-22",
+      "price": 899.00,
+      "warranty_period_months": null,
+      "return_window_days": 7,
+      "confidence_min": "medium"
+    }
+  },
+  {
+    "id": "TC009",
+    "source": "email",
+    "retailer_hint": "ajio",
+    "text": "Hello Rohan,\nYour Ajio order has been placed successfully.\nOrder ID: FN20250912345678\nProduct Name: HM Slim Fit Chinos (Beige)\nOrder Date: 12/09/2025\nOrder Total: Rs. 2,499\n30 days return policy.",
+    "ground_truth": {
+      "product_name": "HM Slim Fit Chinos (Beige)",
+      "brand": "HM",
+      "retailer": "Ajio",
+      "purchase_date": "2025-09-12",
+      "price": 2499.00,
+      "warranty_period_months": null,
+      "return_window_days": 30,
+      "confidence_min": "medium"
+    }
+  },
+  {
+    "id": "TC010",
+    "source": "email",
+    "retailer_hint": "ajio",
+    "text": "Ajio Order Confirmation\nOrder ID: FN20251001987654\nProduct Name: Puma Men Slim Fit Joggers (Black)\nOrder Date: 01/10/2025\nOrder Total: Rs. 1,899\n15 days return policy",
+    "ground_truth": {
+      "product_name": "Puma Men Slim Fit Joggers (Black)",
+      "brand": "Puma",
+      "retailer": "Ajio",
+      "purchase_date": "2025-10-01",
+      "price": 1899.00,
+      "warranty_period_months": null,
+      "return_window_days": 15,
+      "confidence_min": "medium"
+    }
+  },
+  {
+    "id": "TC011",
+    "source": "email",
+    "retailer_hint": null,
+    "text": "Dear Customer,\nThank you for your order from Myntra.\nOrder #12345678901234\nOrdered on 18 August 2025\nProduct: Roadster Men Solid Slim Fit T-shirt (Navy)\nMRP: ₹899 | Selling Price: ₹629\n30-day return window",
+    "ground_truth": {
+      "product_name": "Roadster Men Solid Slim Fit T-shirt (Navy)",
+      "brand": "Roadster",
+      "retailer": "Myntra",
+      "purchase_date": "2025-08-18",
+      "price": 629.00,
+      "warranty_period_months": null,
+      "return_window_days": 30,
+      "confidence_min": "low"
+    }
+  },
+  {
+    "id": "TC012",
+    "source": "email",
+    "retailer_hint": null,
+    "text": "Nykaa Order Confirmation\nOrder No: NYK-2025-001234567\nDate: 25 September 2025\nLakme Absolute Matte Revolution Lip Color\nQty: 1 | Price: ₹850\n14-day easy returns",
+    "ground_truth": {
+      "product_name": "Lakme Absolute Matte Revolution Lip Color",
+      "brand": "Lakme",
+      "retailer": "Nykaa",
+      "purchase_date": "2025-09-25",
+      "price": 850.00,
+      "warranty_period_months": null,
+      "return_window_days": 14,
+      "confidence_min": "low"
+    }
+  },
+  {
+    "id": "TC013",
+    "source": "email",
+    "retailer_hint": null,
+    "text": "प्रिय ग्राहक,\nआपका Meesho ऑर्डर confirm ho gaya hai.\nऑर्डर ID: 987654321012\nउत्पाद: Samsung Galaxy Buds2 Pro (Graphite)\nकुल राशि: ₹8,999\nऑर्डर दिनांक: 3 सितम्बर 2025\n7 दिन वापसी नीति लागू है.",
+    "ground_truth": {
+      "product_name": "Samsung Galaxy Buds2 Pro (Graphite)",
+      "brand": "Samsung",
+      "retailer": "Meesho",
+      "purchase_date": "2025-09-03",
+      "price": 8999.00,
+      "warranty_period_months": null,
+      "return_window_days": 7,
+      "confidence_min": "low"
+    }
+  },
+  {
+    "id": "TC014",
+    "source": "email",
+    "retailer_hint": null,
+    "text": "Bhai tera order confirm ho gaya!\nOrder se related details:\nProduct: Apple iPhone 15 (128GB, Black)\nPrice: Rs 79,900\nOrder Date: Oct 5, 2025\nReturn kar sakte ho 7 din tak.\n1 saal ki warranty bhi milegi.",
+    "ground_truth": {
+      "product_name": "Apple iPhone 15 (128GB, Black)",
+      "brand": "Apple",
+      "retailer": null,
+      "purchase_date": "2025-10-05",
+      "price": 79900.00,
+      "warranty_period_months": 12,
+      "return_window_days": 7,
+      "confidence_min": "low"
+    }
+  },
+  {
+    "id": "TC015",
+    "source": "email",
+    "retailer_hint": "amazon",
+    "text": "Amazon.in Order Confirmation\nOrder #408-5555555-7777777\nPlaced on: July 1, 2025\n1 x Whirlpool 240 L Frost Free Double Door 3 Star Refrigerator\nOrder Total: ₹26,490.00\n1-year comprehensive warranty, 5-year warranty on compressor\n10-day return window",
+    "ground_truth": {
+      "product_name": "Whirlpool 240 L Frost Free Double Door 3 Star Refrigerator",
+      "brand": "Whirlpool",
+      "retailer": "Amazon",
+      "purchase_date": "2025-07-01",
+      "price": 26490.00,
+      "warranty_period_months": 12,
+      "return_window_days": 10,
+      "confidence_min": "medium"
+    }
+  },
+  {
+    "id": "TC016",
+    "source": "email",
+    "retailer_hint": "flipkart",
+    "text": "Flipkart Order Confirmed!\nOrder ID: OD119988776655443322\nOrder Date: 25 June 2025\nProduct Name: Mi Smart Band 8 Pro (Black)\nOrder Total: ₹4,499\n7-day replacement",
+    "ground_truth": {
+      "product_name": "Mi Smart Band 8 Pro (Black)",
+      "brand": "Mi",
+      "retailer": "Flipkart",
+      "purchase_date": "2025-06-25",
+      "price": 4499.00,
+      "warranty_period_months": null,
+      "return_window_days": 7,
+      "confidence_min": "medium"
+    }
+  },
+  {
+    "id": "TC017",
+    "source": "email",
+    "retailer_hint": "amazon",
+    "text": "Your Amazon.in Order\nOrder #409-2345678-3456789\nOrdered on August 22, 2025\n1 x Prestige IRIS 750-Watt Mixer Grinder\nAmount Charged: ₹2,595.00\nWarranty: 5 years on motor, 2 years on product\n30-day return",
+    "ground_truth": {
+      "product_name": "Prestige IRIS 750-Watt Mixer Grinder",
+      "brand": "Prestige",
+      "retailer": "Amazon",
+      "purchase_date": "2025-08-22",
+      "price": 2595.00,
+      "warranty_period_months": 24,
+      "return_window_days": 30,
+      "confidence_min": "medium"
+    }
+  },
+  {
+    "id": "TC018",
+    "source": "email",
+    "retailer_hint": null,
+    "text": "Thanks for shopping with us. Your item will be dispatched shortly.\nTotal charged: ₹3,500",
+    "ground_truth": {
+      "product_name": null,
+      "brand": null,
+      "retailer": null,
+      "purchase_date": null,
+      "price": 3500.00,
+      "warranty_period_months": null,
+      "return_window_days": null,
+      "confidence_min": "low"
+    }
+  },
+  {
+    "id": "TC019",
+    "source": "email",
+    "retailer_hint": null,
+    "text": "Your order has been placed successfully!\nOrder ID: 20251001-XYZ\nProduct: Generic USB-C Hub (7-in-1)\nPrice: ₹1,200\nDate: October 1, 2025\n15-day return",
+    "ground_truth": {
+      "product_name": "Generic USB-C Hub (7-in-1)",
+      "brand": null,
+      "retailer": null,
+      "purchase_date": "2025-10-01",
+      "price": 1200.00,
+      "warranty_period_months": null,
+      "return_window_days": 15,
+      "confidence_min": "low"
+    }
+  },
+  {
+    "id": "TC020",
+    "source": "email",
+    "retailer_hint": "amazon",
+    "text": "Amazon.in\nOrder #410-1111111-2222222\nOrdered on: September 15, 2025\n1 x Havells Instanio 3-Litre Instant Water Heater\nGrand Total: ₹3,199.00\n2-year warranty\n30-day return",
+    "ground_truth": {
+      "product_name": "Havells Instanio 3-Litre Instant Water Heater",
+      "brand": "Havells",
+      "retailer": "Amazon",
+      "purchase_date": "2025-09-15",
+      "price": 3199.00,
+      "warranty_period_months": 24,
+      "return_window_days": 30,
+      "confidence_min": "medium"
+    }
+  },
+  {
+    "id": "TC021",
+    "source": "email",
+    "retailer_hint": "flipkart",
+    "text": "Flipkart Order Confirmation\nOrder ID: OD220011223344556677\nOrder Date: 2 October 2025\nProduct Name: OnePlus Nord CE 4 Lite 5G (Super Silver, 8GB+256GB)\nTotal Amount: ₹19,999\n1-year manufacturer warranty\n7-day replacement",
+    "ground_truth": {
+      "product_name": "OnePlus Nord CE 4 Lite 5G (Super Silver, 8GB+256GB)",
+      "brand": "OnePlus",
+      "retailer": "Flipkart",
+      "purchase_date": "2025-10-02",
+      "price": 19999.00,
+      "warranty_period_months": 12,
+      "return_window_days": 7,
+      "confidence_min": "medium"
+    }
+  },
+  {
+    "id": "TC022",
+    "source": "email",
+    "retailer_hint": "amazon",
+    "text": "Dear Customer,\nThank you for shopping at Amazon.in\nOrder #411-3456789-0123456\nOrdered on: 8 September 2025\n1 x Philips H4 LED Headlight Bulb (set of 2)\nAmount Charged: ₹1,499.00\nWarranty: 2 years\n30-day return applicable",
+    "ground_truth": {
+      "product_name": "Philips H4 LED Headlight Bulb (set of 2)",
+      "brand": "Philips",
+      "retailer": "Amazon",
+      "purchase_date": "2025-09-08",
+      "price": 1499.00,
+      "warranty_period_months": 24,
+      "return_window_days": 30,
+      "confidence_min": "medium"
+    }
+  },
+  {
+    "id": "TC023",
+    "source": "email",
+    "retailer_hint": "meesho",
+    "text": "Hi Sunita,\nMeesho order confirmed!\nOrder ID: 334455667788\nProduct Name: Libas Women Embroidered Kurta Set\nOrder Date: 14-08-2025\nOrder Total: Rs. 549\n7 days return policy",
+    "ground_truth": {
+      "product_name": "Libas Women Embroidered Kurta Set",
+      "brand": "Libas",
+      "retailer": "Meesho",
+      "purchase_date": "2025-08-14",
+      "price": 549.00,
+      "warranty_period_months": null,
+      "return_window_days": 7,
+      "confidence_min": "medium"
+    }
+  },
+  {
+    "id": "TC024",
+    "source": "email",
+    "retailer_hint": null,
+    "text": "JioMart Order Confirmed!\nOrder #JM202509151234567\nDate: 15 September 2025\nTata Salt Crystal (1 kg) × 3\nMaaza Mango Drink 600ml × 6\nTotal: ₹347.00\n3-day return for grocery items",
+    "ground_truth": {
+      "product_name": null,
+      "brand": null,
+      "retailer": "JioMart",
+      "purchase_date": "2025-09-15",
+      "price": 347.00,
+      "warranty_period_months": null,
+      "return_window_days": 3,
+      "confidence_min": "low"
+    }
+  },
+  {
+    "id": "TC025",
+    "source": "email",
+    "retailer_hint": "amazon",
+    "text": "Amazon.in\nYour order of Lenovo IdeaPad Slim 3 Laptop (15.6\", Intel Core i5, 16GB RAM, 512GB SSD) has been placed.\nOrder #412-7654321-9876543\nOrdered on: October 10, 2025\nOrder Total: ₹49,990.00\n1-year onsite warranty\n15-day replacement",
+    "ground_truth": {
+      "product_name": "Lenovo IdeaPad Slim 3 Laptop (15.6\", Intel Core i5, 16GB RAM, 512GB SSD)",
+      "brand": "Lenovo",
+      "retailer": "Amazon",
+      "purchase_date": "2025-10-10",
+      "price": 49990.00,
+      "warranty_period_months": 12,
+      "return_window_days": 15,
+      "confidence_min": "medium"
+    }
+  },
+  {
+    "id": "TC026",
+    "source": "email",
+    "retailer_hint": "flipkart",
+    "text": "Your Flipkart Order is Confirmed\nOrder ID: OD330099887766554433\nOrder Date: 11 October 2025\nProduct Name: Dyson V12 Detect Slim Absolute Vacuum Cleaner\nAmount Payable: ₹48,900\n2-year Dyson warranty\n10-day return",
+    "ground_truth": {
+      "product_name": "Dyson V12 Detect Slim Absolute Vacuum Cleaner",
+      "brand": "Dyson",
+      "retailer": "Flipkart",
+      "purchase_date": "2025-10-11",
+      "price": 48900.00,
+      "warranty_period_months": 24,
+      "return_window_days": 10,
+      "confidence_min": "medium"
+    }
+  },
+  {
+    "id": "TC027",
+    "source": "email",
+    "retailer_hint": "amazon",
+    "text": "Amazon.in Order Summary\nOrder #413-8888888-1234567\nPlaced on: June 20, 2025\n1 x Nikon Z30 Mirrorless Camera (Body Only)\nAmount Charged: ₹62,995.00\n1 year warranty\n10-day return policy",
+    "ground_truth": {
+      "product_name": "Nikon Z30 Mirrorless Camera (Body Only)",
+      "brand": "Nikon",
+      "retailer": "Amazon",
+      "purchase_date": "2025-06-20",
+      "price": 62995.00,
+      "warranty_period_months": 12,
+      "return_window_days": 10,
+      "confidence_min": "medium"
+    }
+  },
+  {
+    "id": "TC028",
+    "source": "email",
+    "retailer_hint": "flipkart",
+    "text": "Flipkart Order Confirmed!\nOrder ID: OD440055667788990011\nOrder Date: 30 September 2025\nProduct Name: Voltas 1.5 Ton 3 Star Inverter Split AC\nTotal Amount: ₹32,490\n5 year warranty on compressor, 1 year comprehensive\n7-day return",
+    "ground_truth": {
+      "product_name": "Voltas 1.5 Ton 3 Star Inverter Split AC",
+      "brand": "Voltas",
+      "retailer": "Flipkart",
+      "purchase_date": "2025-09-30",
+      "price": 32490.00,
+      "warranty_period_months": 12,
+      "return_window_days": 7,
+      "confidence_min": "medium"
+    }
+  },
+  {
+    "id": "TC029",
+    "source": "email",
+    "retailer_hint": null,
+    "text": "आपका ऑर्डर कन्फर्म हो गया है।\nऑर्डर नंबर: FK-2025-98765\nउत्पाद: Realme 12 Pro+ 5G (Navigator Beige, 12GB RAM 256GB)\nकीमत: ₹26,999\nतारीख: 7 अक्टूबर 2025\n1 साल की वारंटी। 10 दिन रिटर्न।",
+    "ground_truth": {
+      "product_name": "Realme 12 Pro+ 5G (Navigator Beige, 12GB RAM 256GB)",
+      "brand": "Realme",
+      "retailer": null,
+      "purchase_date": "2025-10-07",
+      "price": 26999.00,
+      "warranty_period_months": 12,
+      "return_window_days": 10,
+      "confidence_min": "low"
+    }
+  },
+  {
+    "id": "TC030",
+    "source": "email",
+    "retailer_hint": "amazon",
+    "text": "Amazon.in\nOrder #414-9999999-0000001\nOrdered on: October 12, 2025\n1 x Kindle Paperwhite (16 GB) — 7-inch display\nAmount Charged: ₹13,999.00\n1-year limited warranty\n30-day return",
+    "ground_truth": {
+      "product_name": "Kindle Paperwhite (16 GB) — 7-inch display",
+      "brand": "Kindle",
+      "retailer": "Amazon",
+      "purchase_date": "2025-10-12",
+      "price": 13999.00,
+      "warranty_period_months": 12,
+      "return_window_days": 30,
+      "confidence_min": "medium"
+    }
+  },
+  {
+    "id": "TC031",
+    "source": "email",
+    "retailer_hint": "amazon",
+    "text": "Amazon.in Order Confirmation\nOrder #415-0123456-7890123\nOrdered on September 28, 2025\n1 x JBL Charge 5 Portable Bluetooth Speaker (Squad)\nGrand Total: ₹14,999.00\n1 year warranty\n30-day return policy",
+    "ground_truth": {
+      "product_name": "JBL Charge 5 Portable Bluetooth Speaker (Squad)",
+      "brand": "JBL",
+      "retailer": "Amazon",
+      "purchase_date": "2025-09-28",
+      "price": 14999.00,
+      "warranty_period_months": 12,
+      "return_window_days": 30,
+      "confidence_min": "medium"
+    }
+  },
+  {
+    "id": "TC032",
+    "source": "email",
+    "retailer_hint": "flipkart",
+    "text": "Your Flipkart Order is Confirmed!\nOrder ID: OD550011223344556688\nOrder Date: 13 September 2025\nProduct Name: Bajaj 1200mm Ceiling Fan (White)\nTotal Amount: ₹1,899\n2 years warranty\n7-day return",
+    "ground_truth": {
+      "product_name": "Bajaj 1200mm Ceiling Fan (White)",
+      "brand": "Bajaj",
+      "retailer": "Flipkart",
+      "purchase_date": "2025-09-13",
+      "price": 1899.00,
+      "warranty_period_months": 24,
+      "return_window_days": 7,
+      "confidence_min": "medium"
+    }
+  },
+  {
+    "id": "TC033",
+    "source": "email",
+    "retailer_hint": null,
+    "text": "Thank you for your purchase!\nOrder confirmed on 5 October 2025\nProduct: Generic Bluetooth Gaming Mouse\nTotal: ₹799\nReturn within 15 days.",
+    "ground_truth": {
+      "product_name": "Generic Bluetooth Gaming Mouse",
+      "brand": null,
+      "retailer": null,
+      "purchase_date": "2025-10-05",
+      "price": 799.00,
+      "warranty_period_months": null,
+      "return_window_days": 15,
+      "confidence_min": "low"
+    }
+  },
+  {
+    "id": "TC034",
+    "source": "email",
+    "retailer_hint": "meesho",
+    "text": "Hi Amit,\nYour Meesho order is confirmed!\nOrder ID: 556677889900\nProduct Name: Usha Durawind 400mm Wall Fan\nOrder Date: 18-09-2025\nOrder Total: Rs. 2,199\n7 days return",
+    "ground_truth": {
+      "product_name": "Usha Durawind 400mm Wall Fan",
+      "brand": "Usha",
+      "retailer": "Meesho",
+      "purchase_date": "2025-09-18",
+      "price": 2199.00,
+      "warranty_period_months": null,
+      "return_window_days": 7,
+      "confidence_min": "medium"
+    }
+  },
+  {
+    "id": "TC035",
+    "source": "email",
+    "retailer_hint": "amazon",
+    "text": "Amazon.in\nOrder #416-2222222-3333333\nOrdered on: October 3, 2025\n1 x Asus ROG Strix G15 Gaming Laptop (Ryzen 9, 16GB, 512GB SSD, RTX 4060)\nOrder Total: ₹1,09,990.00\n2-year onsite warranty with accidental damage protection\n15-day return",
+    "ground_truth": {
+      "product_name": "Asus ROG Strix G15 Gaming Laptop (Ryzen 9, 16GB, 512GB SSD, RTX 4060)",
+      "brand": "Asus",
+      "retailer": "Amazon",
+      "purchase_date": "2025-10-03",
+      "price": 109990.00,
+      "warranty_period_months": 24,
+      "return_window_days": 15,
+      "confidence_min": "medium"
+    }
+  }
+]
