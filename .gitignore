@@ -69,3 +69,13 @@ Thumbs.db
 # ── Logs ─────────────────────────────────────────────────────────────────────
 *.log
 logs/
+
+# ── Test / CI artefacts ───────────────────────────────────────────────────────
+backend/test_ci.db
+backend/test_ci.db-shm
+backend/test_ci.db-wal
+*.db
+
+# ── Docker Compose overrides (local tweaks not for source control) ────────────
+docker-compose.override.yml
+docker-compose.local.yml

@@ -1,0 +1,100 @@
+version: "3.9"
+
+# ── Warranty Radar — Local Development Stack ───────────────────────────────────
+#
+# Starts:
+#   postgres  — local PostgreSQL (same schema as production Supabase/Neon)
+#   backend   — FastAPI on :8000 with hot reload
+#   frontend  — Vite dev server on :5173 with HMR
+#
+# Usage:
+#   docker compose up           # start everything
+#   docker compose up backend   # backend only (assumes postgres already running)
+#   docker compose logs -f      # tail all logs
+#   docker compose down -v      # stop and delete volumes
+#
+# Prerequisites:
+#   1. Copy backend/.env.example → backend/.env and fill in your secrets.
+#   2. Copy frontend/.env.example → frontend/.env.local
+#   3. docker compose up postgres -d   (first run — wait ~5s for DB to be ready)
+#   4. docker compose exec backend alembic upgrade head
+#   5. docker compose up
+
+services:
+
+  # ── PostgreSQL ──────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:15-alpine
+    container_name: warranty_radar_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: warranty_radar
+      POSTGRES_USER: warranty_user
+      POSTGRES_PASSWORD: warranty_pass
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U warranty_user -d warranty_radar"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ── Backend ─────────────────────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: warranty_radar_backend
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env
+    environment:
+      # Override DATABASE_URL to point at the local postgres container
+      DATABASE_URL: postgresql://warranty_user:warranty_pass@postgres:5432/warranty_radar
+      FRONTEND_ORIGIN: http://localhost:5173
+    ports:
+      - "8000:8000"
+    volumes:
+      # Mount app code for hot reload in dev; comment out for production-like testing
+      - ./backend:/app
+      # Persist uploads between restarts
+      - uploads_data:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: >
+      uvicorn main:app
+        --host 0.0.0.0
+        --port 8000
+        --reload
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 15s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+
+  # ── Frontend ────────────────────────────────────────────────────────────────
+  frontend:
+    image: node:20-alpine
+    container_name: warranty_radar_frontend
+    working_dir: /app
+    restart: unless-stopped
+    environment:
+      VITE_API_URL: http://localhost:8000
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules   # anonymous volume so host node_modules don't leak in
+    depends_on:
+      backend:
+        condition: service_healthy
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
+
+volumes:
+  postgres_data:
+  uploads_data:

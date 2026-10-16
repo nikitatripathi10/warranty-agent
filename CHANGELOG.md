@@ -5,6 +5,45 @@ order. Each section lists what was added, changed, or fixed and the files involv
 
 ---
 
+## [0.5.0] — 2026-10-16 · Milestone 5: Production Deployment
+
+### CI/CD Pipeline
+| File | Description |
+|---|---|
+| `.github/workflows/ci.yml` | GitHub Actions: backend pytest (Python 3.11 + 3.12) + validation metrics, frontend Vite build check, Docker image build validation on main |
+
+### Backend Deployment (Railway — Docker)
+| File | Change |
+|---|---|
+| `railway.json` | Switched from Nixpacks to **Dockerfile** builder; added `/health` healthcheck path; 2 Uvicorn workers |
+| `backend/app/routers/health.py` | Enhanced: `GET /health` (liveness, uptime_seconds), `GET /health/ready` (readiness — checks DB with `SELECT 1`, returns 503 if down) |
+| `backend/main.py` | Version bumped to `0.5.0`; startup log updated for M5 |
+
+### Frontend Deployment (Vercel)
+| File | Change |
+|---|---|
+| `frontend/vercel.json` | Production config: SPA rewrites, long-lived asset cache headers (`Cache-Control: immutable`), security headers (X-Frame-Options, X-Content-Type-Options, XSS-Protection, Referrer-Policy), `VITE_API_URL` env var documentation |
+| `frontend/vite.config.js` | Added `loadEnv`, dev server proxy (`/api/*` → backend), production chunk splitting (vendor bundle), 500 kB chunk size warning |
+| `frontend/.env.example` | Documents `VITE_API_URL` for local and production |
+| `frontend/src/App.jsx` | Aligned `API_BASE` to use `VITE_API_URL` (was `VITE_API_BASE_URL`) |
+
+### Local Development
+| File | Description |
+|---|---|
+| `docker-compose.yml` | Full local stack: PostgreSQL 15 + FastAPI backend (hot reload) + Vite frontend (HMR), wired with healthchecks and `depends_on` conditions |
+
+### Documentation
+| File | Description |
+|---|---|
+| `DEPLOYMENT.md` | Complete deployment guide: Railway, Vercel, Supabase/Neon, Google OAuth production, docker-compose local dev, CI secrets, smoke test checklist, monitoring setup, rollback procedure |
+
+### Other Fixes
+| File | Change |
+|---|---|
+| `.gitignore` | Added CI SQLite test DB artefacts and docker-compose override patterns |
+
+---
+
 ## [0.4.0] — 2026-10-16 · Milestone 4: System Validation
 
 ### Test Suite (100 tests, 0 failures)
