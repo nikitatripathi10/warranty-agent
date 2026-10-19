@@ -1,0 +1,34 @@
+# Ignore local virtual environments (avoid copying Windows binaries to Linux container)
+venv/
+.venv/
+backend/venv/
+backend/.venv/
+env/
+
+# Secrets & local files
+.env
+.env.local
+backend/.env
+*.env
+
+# Python caches
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+
+# Node / Frontend
+node_modules/
+frontend/node_modules/
+frontend/dist/
+
+# Git
+.git/
+.github/
+
+# Uploads & temporary DBs
+backend/uploads/
+uploads/
+*.db
+*.log

@@ -1,0 +1,21 @@
+# Ignore local virtual environments (avoid copying Windows binaries to Linux container)
+venv/
+.venv/
+env/
+
+# Secrets & local files
+.env
+.env.local
+*.env
+
+# Python caches
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+
+# Uploads & temporary DBs
+uploads/
+*.db
+*.log

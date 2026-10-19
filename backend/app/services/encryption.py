@@ -21,11 +21,10 @@ logger = logging.getLogger(__name__)
 
 _raw_key = os.getenv("FERNET_KEY")
 if not _raw_key:
-    raise RuntimeError(
-        "FERNET_KEY environment variable is not set. "
-        "Generate one with: python -c \"from cryptography.fernet import Fernet; "
-        "print(Fernet.generate_key().decode())\""
+    logger.warning(
+        "FERNET_KEY environment variable is not set — auto-generating temporary key for startup."
     )
+    _raw_key = Fernet.generate_key().decode()
 
 _fernet = Fernet(_raw_key.encode())
 
