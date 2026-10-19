@@ -15,7 +15,7 @@ import logging
 import uuid
 from datetime import date, datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -243,13 +243,14 @@ def edit_purchase(
 @router.delete(
     "/{purchase_id}",
     status_code=204,
+    response_class=Response,
     summary="Delete a purchase record",
 )
 def delete_purchase(
     purchase_id: uuid.UUID,
     user_id: uuid.UUID = Query(..., description="UUID of the user"),
     db: Session = Depends(get_db),
-) -> None:
+) -> Response:
     """
     Permanently delete a purchase and its associated warranty period and alerts
     (via CASCADE foreign key).
@@ -259,6 +260,7 @@ def delete_purchase(
         db.delete(purchase)
         db.commit()
         logger.info("Purchase %s deleted by user %s", purchase_id, user_id)
+        return Response(status_code=204)
     except Exception as exc:
         db.rollback()
         logger.error("DB error deleting purchase %s: %s", purchase_id, exc)
