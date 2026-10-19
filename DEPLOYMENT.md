@@ -2,7 +2,7 @@
 
 Complete instructions for deploying Warranty Radar to production:
 - **Backend** → [Railway](https://railway.app) (Docker, auto-deploy from GitHub)
-- **Frontend** → [Vercel](https://vercel.com) (Vite/React, auto-deploy from GitHub)
+- **Frontend** → [Netlify](https://netlify.com) or [Vercel](https://vercel.com) (Vite/React, auto-deploy from GitHub)
 - **Database** → [Supabase](https://supabase.com) or [Neon](https://neon.tech) (managed PostgreSQL)
 
 ---
@@ -14,7 +14,7 @@ GitHub ──► GitHub Actions CI ──► tests pass?
              │                         │
              │ (main branch)           │ (all green)
              ▼                         ▼
-         Railway (backend)       Vercel (frontend)
+         Railway (backend)       Netlify (frontend)
          Docker image            npm run build → CDN
               │
               ▼
@@ -81,28 +81,36 @@ configured with `ON_FAILURE` restart policy and `/health` healthcheck.
 
 ---
 
-## 3. Frontend Deployment (Vercel)
+## 3. Frontend Deployment (Netlify)
 
 ### Initial Setup
-1. Go to [vercel.com](https://vercel.com) → Add New → Project → Import Git Repository
-2. Select `warranty-agent` → set **Root Directory** to `frontend`
-3. Vercel detects Vite automatically
+1. Go to [netlify.com](https://netlify.com) → **Add new site → Import an existing project → GitHub**
+2. Select the `warranty-agent` repository
+3. Configure the build:
+   - **Base directory**: `frontend`
+   - **Build command**: `npm run build`
+   - **Publish directory**: `dist`
+4. Netlify reads `frontend/netlify.toml` automatically (SPA redirects, cache headers, security headers)
 
 ### Environment Variables
-Set in **Vercel → Project → Settings → Environment Variables**:
+Set in **Netlify → Site → Site configuration → Environment variables**:
 
 | Variable | Value |
 |---|---|
 | `VITE_API_URL` | `https://warranty-radar-api.up.railway.app` |
 
-### Build Settings
-Vercel auto-detects from `vercel.json`:
-- **Build Command**: `npm run build`
-- **Output Directory**: `dist`
-- **Framework**: Vite
-
 ### Auto-deploy
-Vercel auto-deploys on every push to `main`. Each PR gets a preview URL.
+Netlify auto-deploys on every push to `main`. Each PR gets a unique preview URL.
+
+---
+
+## 3b. Alternative Frontend Deployment (Vercel)
+
+If you prefer Vercel:
+1. Go to [vercel.com](https://vercel.com) → Add New → Project → Import Git Repository
+2. Select `warranty-agent` → set **Root Directory** to `frontend`
+3. Vercel detects Vite automatically from `frontend/vercel.json`
+4. Set `VITE_API_URL` in Vercel environment variables → same value as above
 
 ---
 
@@ -116,7 +124,7 @@ Vercel auto-deploys on every push to `main`. Each PR gets a preview URL.
    ```
 4. Add to **Authorized JavaScript origins**:
    ```
-   https://your-app.vercel.app
+   https://your-app.netlify.app
    ```
 5. Update `GOOGLE_REDIRECT_URI` in Railway to match exactly
 
@@ -226,6 +234,12 @@ POPPLER_PATH=                     # Windows only: path to Poppler bin/
 ### Frontend (`frontend/.env.local`)
 ```env
 VITE_API_URL=http://localhost:8000
+```
+
+### Frontend Netlify Production Variable
+Set in **Netlify → Site configuration → Environment variables**:
+```
+VITE_API_URL=https://your-api.up.railway.app
 ```
 
 ---

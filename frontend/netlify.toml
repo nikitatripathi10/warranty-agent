@@ -1,0 +1,36 @@
+# ── Warranty Radar — Netlify Deploy Config ────────────────────────────────────
+#
+# Netlify auto-detects this file at the repo root (or frontend/ if root dir is set).
+# Set the "Base directory" to "frontend" in Netlify project settings.
+#
+# Environment variable required (set in Netlify Dashboard → Site → Environment):
+#   VITE_API_URL = https://<your-railway-backend>.up.railway.app
+
+[build]
+  base    = "."                 # relative to the "frontend/" root dir in Netlify
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+# ── SPA redirect — all paths serve index.html ─────────────────────────────────
+[[redirects]]
+  from   = "/*"
+  to     = "/index.html"
+  status = 200
+
+# ── Long-lived cache for hashed assets ────────────────────────────────────────
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# ── Security headers on all pages ─────────────────────────────────────────────
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options        = "DENY"
+    X-Content-Type-Options = "nosniff"
+    X-XSS-Protection       = "1; mode=block"
+    Referrer-Policy        = "strict-origin-when-cross-origin"

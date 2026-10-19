@@ -19,10 +19,11 @@ order. Each section lists what was added, changed, or fixed and the files involv
 | `backend/app/routers/health.py` | Enhanced: `GET /health` (liveness, uptime_seconds), `GET /health/ready` (readiness — checks DB with `SELECT 1`, returns 503 if down) |
 | `backend/main.py` | Version bumped to `0.5.0`; startup log updated for M5 |
 
-### Frontend Deployment (Vercel)
+### Frontend Deployment (Netlify + Vercel)
 | File | Change |
 |---|---|
-| `frontend/vercel.json` | Production config: SPA rewrites, long-lived asset cache headers (`Cache-Control: immutable`), security headers (X-Frame-Options, X-Content-Type-Options, XSS-Protection, Referrer-Policy), `VITE_API_URL` env var documentation |
+| `frontend/netlify.toml` | **New**: Netlify build config — base `frontend`, publish `dist`, SPA `/*` redirect to `index.html`, long-lived asset cache, security headers |
+| `frontend/vercel.json` | Kept as alternative — SPA rewrites, long-lived asset cache headers (`Cache-Control: immutable`), security headers, `VITE_API_URL` env var documentation |
 | `frontend/vite.config.js` | Added `loadEnv`, dev server proxy (`/api/*` → backend), production chunk splitting (vendor bundle), 500 kB chunk size warning |
 | `frontend/.env.example` | Documents `VITE_API_URL` for local and production |
 | `frontend/src/App.jsx` | Aligned `API_BASE` to use `VITE_API_URL` (was `VITE_API_BASE_URL`) |

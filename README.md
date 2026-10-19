@@ -5,8 +5,7 @@ documents (invoices, warranty cards), extracts product/warranty/return-window
 information, stores it in a structured database, schedules expiry alerts,
 and answers natural-language warranty queries via a built-in AI agent.
 
-> **Milestone 3** — Warranty agent + automated tracking + 4-screen dashboard.
-> Milestone 4 (validation) and 5 (deployment) are next.
+> **Milestone 5 complete** — Warranty agent + automated tracking + 4-screen dashboard + 100-test validation suite + production deployment (Railway + Netlify).
 
 ---
 
