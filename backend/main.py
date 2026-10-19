@@ -68,15 +68,16 @@ app = FastAPI(
 _frontend_origin = os.getenv("FRONTEND_ORIGIN", "http://localhost:5173")
 _extra_origins = os.getenv("EXTRA_FRONTEND_ORIGINS", "")
 
-_allowed_origins = [_frontend_origin]
+_allowed_origins = [o.rstrip("/") for o in [_frontend_origin] if o]
 if _extra_origins:
     _allowed_origins.extend(
-        o.strip() for o in _extra_origins.split(",") if o.strip()
+        o.strip().rstrip("/") for o in _extra_origins.split(",") if o.strip()
     )
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_allowed_origins,
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
