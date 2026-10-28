@@ -21,11 +21,5 @@
         { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" }
       ]
     }
-  ],
-  "env": {
-    "VITE_API_URL": {
-      "description": "Backend API base URL. Set this in the Vercel project settings.",
-      "required": true
-    }
-  }
+  ]
 }
