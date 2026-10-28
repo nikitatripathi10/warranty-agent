@@ -128,7 +128,15 @@ const DEMO_ALERTS = [
 export default function App() {
   // ── Auth state ──────────────────────────────────────────────────────────────
   const [userId, setUserId] = useState(() => localStorage.getItem('wrd_user_id') || '')
-  const [userEmail, setUserEmail] = useState(() => localStorage.getItem('wrd_user_email') || '')
+  const [userEmail, setUserEmail] = useState(() => {
+    const email = localStorage.getItem('wrd_user_email') || ''
+    if (email.includes('kartik')) {
+      const updated = email.replace('kartik', 'nikita')
+      localStorage.setItem('wrd_user_email', updated)
+      return updated
+    }
+    return email
+  })
   const isConnected = Boolean(userId && userEmail)
 
   // ── Theme ───────────────────────────────────────────────────────────────────
@@ -545,7 +553,7 @@ export default function App() {
 
   function handleDemoAccess() {
     const demoId = 'demo-user-1'
-    const demoMail = 'kartik.demo@gmail.com'
+    const demoMail = 'nikita.demo@gmail.com'
     localStorage.setItem('wrd_user_id', demoId)
     localStorage.setItem('wrd_user_email', demoMail)
     setUserId(demoId)
