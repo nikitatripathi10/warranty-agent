@@ -1,4 +1,5 @@
 import react from '@vitejs/plugin-react'
+import tailwindcss from '@tailwindcss/vite'
 import { defineConfig, loadEnv } from 'vite'
 
 // https://vite.dev/config/
@@ -6,7 +7,7 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
 
   return {
-    plugins: [react()],
+    plugins: [react(), tailwindcss()],
 
     // Make VITE_API_URL available at build time
     define: {
@@ -33,6 +34,9 @@ export default defineConfig(({ mode }) => {
           manualChunks: (id) => {
             if (id.includes('node_modules/react') || id.includes('node_modules/react-dom')) {
               return 'vendor'
+            }
+            if (id.includes('node_modules/motion') || id.includes('node_modules/framer-motion') || id.includes('node_modules/motion-')) {
+              return 'motion'
             }
           },
         },
