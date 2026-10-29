@@ -578,6 +578,25 @@ export default function App() {
     addToast('Loaded demo workspace with sample data!', 'success')
   }
 
+  const handleNavigateWithDemo = useCallback((targetScreen) => {
+    if (targetScreen === 'landing') {
+      setScreen('landing')
+      return
+    }
+    if (!userId) {
+      const demoId = 'demo-user-1'
+      const demoMail = 'nikita.demo@gmail.com'
+      localStorage.setItem('wrd_user_id', demoId)
+      localStorage.setItem('wrd_user_email', demoMail)
+      setUserId(demoId)
+      setUserEmail(demoMail)
+      setPurchases(DEMO_PURCHASES)
+      setAlerts(DEMO_ALERTS)
+      addToast("Loaded Nikita Tripathi's pilot workspace!", 'success')
+    }
+    setScreen(targetScreen)
+  }, [userId, addToast])
+
   function openItemDetail(purchase) {
     setSelectedPurchase(purchase)
     setEditMode(false)
@@ -624,6 +643,8 @@ export default function App() {
             activePalette={activePalette}
             onSelectPalette={handleSelectPalette}
             onOpenDashboard={handleDemoAccess}
+            onNavigate={handleNavigateWithDemo}
+            currentScreen="landing"
           />
           <main className="flex-1">
             <LandingView
@@ -631,6 +652,7 @@ export default function App() {
               onboardStep={onboardStep}
               onDemoAccess={handleDemoAccess}
               activePalette={activePalette}
+              onNavigate={handleNavigateWithDemo}
             />
           </main>
           <Footer className="px-6" />

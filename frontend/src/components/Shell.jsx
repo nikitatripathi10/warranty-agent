@@ -46,15 +46,63 @@ export function ThemeToggle({ theme, onToggle, className }) {
 }
 
 /* ── Top navbar ───────────────────────────────────────────────────────────── */
-export function TopNav({ healthStatus, theme, onToggleTheme, activePalette, onSelectPalette, onOpenDashboard }) {
+export function TopNav({
+  healthStatus,
+  theme,
+  onToggleTheme,
+  activePalette,
+  onSelectPalette,
+  onOpenDashboard,
+  onNavigate,
+  currentScreen = 'landing',
+}) {
+  const navItems = [
+    { id: 'landing', label: 'Overview', icon: 'sparkles' },
+    { id: 'dashboard', label: 'Dashboard', icon: 'dashboard' },
+    { id: 'alerts', label: 'Alerts', icon: 'bell', badge: '2' },
+    { id: 'upload', label: 'OCR Ingest', icon: 'upload' },
+    { id: 'lookup', label: 'AI Copilot', icon: 'bot' },
+    { id: 'validation', label: 'Validation', icon: 'check', badge: '94.6%' },
+    { id: 'dossier', label: 'MITS Dossier', icon: 'file' },
+  ]
+
   return (
     <motion.header
       initial={{ y: -40, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ type: 'spring', stiffness: 160, damping: 20 }}
-      className="sticky top-3 z-40 mx-auto mt-3 flex w-[min(96%,72rem)] items-center justify-between rounded-2xl glass-strong px-4 py-2.5 sm:px-5"
+      className="sticky top-3 z-40 mx-auto mt-3 flex w-[min(96%,76rem)] items-center justify-between rounded-2xl glass-strong px-4 py-2.5 sm:px-5"
     >
       <Logo onClick={onOpenDashboard} />
+
+      {/* Segregated Quick-Jump Navigation Links */}
+      {onNavigate && (
+        <nav className="hidden xl:flex items-center gap-1" aria-label="Quick jump">
+          {navItems.map(item => {
+            const active = currentScreen === item.id
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => onNavigate(item.id)}
+                className={cn(
+                  'relative flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-xs font-semibold transition-all',
+                  active ? 'text-fg bg-white/10 shadow-sm' : 'text-subtle hover:text-fg hover:bg-white/5'
+                )}
+              >
+                <Icon name={item.icon} size={13} />
+                <span>{item.label}</span>
+                {item.badge && (
+                  <span className="rounded-full bg-violet-500/20 px-1.5 py-0.2 text-[0.6rem] font-bold text-violet-300">
+                    {item.badge}
+                  </span>
+                )}
+              </button>
+            )
+          })}
+        </nav>
+      )}
+
       <div className="flex items-center gap-2.5">
         {onOpenDashboard && (
           <button
@@ -77,12 +125,12 @@ export function TopNav({ healthStatus, theme, onToggleTheme, activePalette, onSe
 }
 
 export const NAV = [
-  { id: 'dashboard', label: 'Executive Dashboard', icon: 'dashboard' },
-  { id: 'alerts', label: 'Alerts & Recalls', icon: 'bell' },
-  { id: 'upload', label: 'Document Ingestion (OCR)', icon: 'upload' },
-  { id: 'lookup', label: 'AI Policy Extractor', icon: 'search' },
-  { id: 'validation', label: 'Milestone 4 Benchmarks', icon: 'check' },
-  { id: 'dossier', label: 'MITS Project Dossier', icon: 'file' },
+  { id: 'dashboard', label: 'Executive Dashboard', icon: 'dashboard', badge: null },
+  { id: 'alerts', label: 'Alerts & Recalls', icon: 'bell', badge: '2', badgeClass: 'bg-rose-500 text-white' },
+  { id: 'upload', label: 'Document Ingestion (OCR)', icon: 'upload', badge: 'OCR', badgeClass: 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30' },
+  { id: 'lookup', label: 'AI Policy Extractor', icon: 'search', badge: 'NLP', badgeClass: 'bg-violet-500/20 text-violet-300 border border-violet-500/30' },
+  { id: 'validation', label: 'Milestone 4 Benchmarks', icon: 'check', badge: '94.6%', badgeClass: 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' },
+  { id: 'dossier', label: 'MITS Project Dossier', icon: 'file', badge: 'M2–M5', badgeClass: 'bg-amber-500/20 text-amber-300 border border-amber-500/30' },
 ]
 
 const isActive = (screen, id) => screen === id || (screen === 'detail' && id === 'dashboard')
@@ -139,11 +187,15 @@ export function Sidebar({
               )}
               <Icon name={item.icon} size={17} className={cn('relative transition-colors', active && 'text-violet-300 light:text-violet-700')} />
               <span className="relative flex-1 truncate">{item.label}</span>
-              {item.id === 'alerts' && alertCount > 0 && (
+              {item.id === 'alerts' && alertCount > 0 ? (
                 <span className="relative grid min-w-5 place-items-center rounded-full bg-rose-500 px-1.5 text-[0.65rem] font-bold text-white shadow-[0_0_12px_rgba(244,63,94,0.7)]">
                   {alertCount}
                 </span>
-              )}
+              ) : item.badge ? (
+                <span className={cn('relative grid place-items-center rounded-full px-1.5 py-0.5 text-[0.62rem] font-bold shadow-sm', item.badgeClass)}>
+                  {item.badge}
+                </span>
+              ) : null}
             </motion.button>
           )
         })}

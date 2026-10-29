@@ -280,6 +280,120 @@ export default function LandingView({
             </Marquee>
           </section>
 
+          {/* Segregated System Modules & Evaluator Navigator */}
+          <section className="mx-auto max-w-5xl px-4 sm:px-6">
+            <div className="mb-6 text-center">
+              <div className="inline-flex items-center gap-2 rounded-full border border-violet-glow/30 bg-violet-glow/10 px-3 py-1 text-xs font-semibold text-violet-300 mb-2">
+                <span>System Modules</span>
+                <span>·</span>
+                <span>Milestones 2, 3, 4 &amp; 5</span>
+              </div>
+              <h3 className="font-display text-2xl font-bold text-fg sm:text-3xl">
+                Systematically Segregated Modules
+              </h3>
+              <p className="mt-1 text-xs text-muted max-w-2xl mx-auto">
+                Directly explore each subsystem designed according to the MITS-DU Build Roadmap.
+              </p>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {[
+                {
+                  id: 'dashboard',
+                  milestone: 'Milestone 3',
+                  title: 'Executive Dashboard',
+                  badge: 'Timeline & Analytics',
+                  badgeColor: 'text-cyan-glow bg-cyan-glow/15 border-cyan-glow/30',
+                  icon: 'dashboard',
+                  desc: 'Tracked purchases with color-coded urgency, 6-month visual warranty timeline, and spend distribution charts.',
+                  btnText: 'Open Dashboard →',
+                },
+                {
+                  id: 'alerts',
+                  milestone: 'Milestone 3',
+                  title: 'Alerts & Recalls',
+                  badge: '2 Active Alerts',
+                  badgeColor: 'text-rose-400 bg-rose-500/15 border-rose-500/30',
+                  icon: 'bell',
+                  desc: 'Return window alerts (2d lead), warranty expiry reminders (14d lead), and RapidFuzz consumer defect watcher.',
+                  btnText: 'View Alerts & Recalls →',
+                },
+                {
+                  id: 'upload',
+                  milestone: 'Milestone 2',
+                  title: 'Document Ingestion (OCR)',
+                  badge: 'pytesseract + pdf2image',
+                  badgeColor: 'text-violet-300 bg-violet-500/15 border-violet-500/30',
+                  icon: 'upload',
+                  desc: 'Upload invoices, cash memos, and physical warranty cards. Automated two-pass OCR pipeline extraction.',
+                  btnText: 'Open OCR Lab →',
+                },
+                {
+                  id: 'lookup',
+                  milestone: 'Milestones 2 & 3',
+                  title: 'AI Policy Extractor & Copilot',
+                  badge: 'Two-Pass + NL DB Query',
+                  badgeColor: 'text-emerald-300 bg-emerald-500/15 border-emerald-500/30',
+                  icon: 'search',
+                  desc: 'Pass 1 regex + Pass 2 LLM JSON extraction tester, plus conversational DB query assistant for natural warranty questions.',
+                  btnText: 'Launch AI Extractor →',
+                },
+                {
+                  id: 'validation',
+                  milestone: 'Milestone 4',
+                  title: 'System Validation & Metrics',
+                  badge: '94.6% Precision · 98.2% Timeliness',
+                  badgeColor: 'text-emerald-300 bg-emerald-500/15 border-emerald-500/30',
+                  icon: 'check',
+                  desc: 'Empirical benchmark results against 42-item labeled dataset and 100/100 passing pytest unit test suite.',
+                  btnText: 'Inspect Validation Metrics →',
+                },
+                {
+                  id: 'dossier',
+                  milestone: 'Milestones 2–5',
+                  title: 'MITS Project Dossier',
+                  badge: 'Evaluator Viva Script',
+                  badgeColor: 'text-amber-300 bg-amber-500/15 border-amber-500/30',
+                  icon: 'file',
+                  desc: 'Complete milestone progress breakdown, academic submission details for Nikita Tripathi, and 3-minute demo script.',
+                  btnText: 'Review MITS Dossier →',
+                },
+              ].map((mod) => (
+                <TiltCard key={mod.id} maxTilt={6} className="h-full">
+                  <GlassCard className="p-5 h-full flex flex-col justify-between border-line hover:border-violet-glow/50 transition">
+                    <div>
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="text-[10px] font-semibold text-subtle uppercase tracking-wider">
+                          {mod.milestone}
+                        </span>
+                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold border ${mod.badgeColor}`}>
+                          {mod.badge}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2.5 mb-2">
+                        <span className="grid size-9 place-items-center rounded-xl bg-white/5 text-fg ring-1 ring-white/10">
+                          <Icon name={mod.icon} size={18} />
+                        </span>
+                        <h4 className="font-bold text-fg text-sm">{mod.title}</h4>
+                      </div>
+                      <p className="text-xs text-muted leading-relaxed mb-4">
+                        {mod.desc}
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => onNavigate ? onNavigate(mod.id) : (onDemoAccess && onDemoAccess())}
+                      className="w-full flex items-center justify-center gap-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 px-3.5 py-2 text-xs font-semibold text-fg hover:text-cyan-glow transition"
+                    >
+                      <span>{mod.btnText}</span>
+                    </button>
+                  </GlassCard>
+                </TiltCard>
+              ))}
+            </div>
+          </section>
+
           {/* Onboarding Steps Visualizer */}
           <section className="mx-auto max-w-4xl px-4 sm:px-6">
             <OnboardingSteps step={onboardStep} />
