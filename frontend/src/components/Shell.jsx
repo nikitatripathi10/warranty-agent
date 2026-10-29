@@ -17,7 +17,7 @@ export function Logo({ compact = false, onClick }) {
       {!compact && (
         <div className="leading-tight">
           <div className="font-display text-[1.05rem] font-bold tracking-tight">Warranty Radar</div>
-          <div className="text-[0.62rem] font-medium tracking-[0.18em] text-subtle uppercase">v0.4 · Nikita's Workspace</div>
+          <div className="text-[0.62rem] font-medium tracking-[0.18em] text-subtle uppercase">Nikita Tripathi · MITS-DU</div>
         </div>
       )}
     </div>
@@ -45,7 +45,7 @@ export function ThemeToggle({ theme, onToggle, className }) {
   )
 }
 
-/* ── Landing navbar ───────────────────────────────────────────────────────── */
+/* ── Top navbar ───────────────────────────────────────────────────────────── */
 export function TopNav({ healthStatus, theme, onToggleTheme, activePalette, onSelectPalette, onOpenDashboard }) {
   return (
     <motion.header
@@ -63,7 +63,7 @@ export function TopNav({ healthStatus, theme, onToggleTheme, activePalette, onSe
             className="flex items-center gap-2 rounded-xl bg-linear-to-r from-violet-600 to-cyan-500 px-3.5 py-1.5 text-xs font-semibold text-white shadow-md hover:opacity-95 transition"
           >
             <Icon name="dashboard" size={14} />
-            <span className="hidden sm:inline">Open Dashboard</span>
+            <span className="hidden sm:inline">Launch Pilot Workspace</span>
           </button>
         )}
         <StatusBadge status={healthStatus} />
@@ -77,11 +77,12 @@ export function TopNav({ healthStatus, theme, onToggleTheme, activePalette, onSe
 }
 
 export const NAV = [
-  { id: 'dashboard', label: 'Dashboard', icon: 'dashboard' },
-  { id: 'alerts', label: 'Alerts', icon: 'bell' },
-  { id: 'upload', label: 'Upload Receipt', icon: 'upload' },
-  { id: 'lookup', label: 'Quick Lookup', icon: 'search' },
-  { id: 'landing', label: 'Showcase Tour', icon: 'sparkles' },
+  { id: 'dashboard', label: 'Executive Dashboard', icon: 'dashboard' },
+  { id: 'alerts', label: 'Alerts & Recalls', icon: 'bell' },
+  { id: 'upload', label: 'Document Ingestion (OCR)', icon: 'upload' },
+  { id: 'lookup', label: 'AI Policy Extractor', icon: 'search' },
+  { id: 'validation', label: 'Milestone 4 Benchmarks', icon: 'check' },
+  { id: 'dossier', label: 'MITS Project Dossier', icon: 'file' },
 ]
 
 const isActive = (screen, id) => screen === id || (screen === 'detail' && id === 'dashboard')
@@ -104,15 +105,15 @@ export function Sidebar({
       initial={{ x: -40, opacity: 0 }}
       animate={{ x: 0, opacity: 1 }}
       transition={{ type: 'spring', stiffness: 150, damping: 22 }}
-      className="glass-strong fixed top-3 bottom-3 left-3 z-40 hidden w-[17rem] flex-col rounded-3xl p-4 lg:flex"
+      className="glass-strong fixed top-3 bottom-3 left-3 z-40 hidden w-[17.5rem] flex-col rounded-3xl p-4 lg:flex overflow-y-auto"
       aria-label="Primary"
     >
-      <div className="px-2 pt-1 pb-5">
+      <div className="px-2 pt-1 pb-4">
         <Logo onClick={() => onNavigate('dashboard')} />
       </div>
 
       <nav className="flex flex-1 flex-col gap-1" aria-label="Main navigation">
-        <div className="px-3 pb-2 text-[0.65rem] font-semibold tracking-[0.18em] text-subtle uppercase">Menu</div>
+        <div className="px-3 pb-2 text-[0.65rem] font-semibold tracking-[0.18em] text-subtle uppercase">System Navigation</div>
         {NAV.map(item => {
           const active = isActive(screen, item.id)
           return (
@@ -125,7 +126,7 @@ export function Sidebar({
               transition={spring}
               aria-current={active ? 'page' : undefined}
               className={cn(
-                'group relative flex items-center gap-3 rounded-xl px-3.5 py-3 text-left text-sm font-medium transition-colors',
+                'group relative flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-left text-xs font-semibold transition-colors',
                 active ? 'text-fg' : 'text-muted hover:text-fg'
               )}
             >
@@ -136,8 +137,8 @@ export function Sidebar({
                   className="absolute inset-0 rounded-xl border border-violet-glow/35 bg-linear-to-r from-violet-glow/25 via-electric/10 to-transparent shadow-[0_0_30px_-8px_rgba(139,92,246,0.7)]"
                 />
               )}
-              <Icon name={item.icon} size={18} className={cn('relative transition-colors', active && 'text-violet-300 light:text-violet-700')} />
-              <span className="relative flex-1">{item.label}</span>
+              <Icon name={item.icon} size={17} className={cn('relative transition-colors', active && 'text-violet-300 light:text-violet-700')} />
+              <span className="relative flex-1 truncate">{item.label}</span>
               {item.id === 'alerts' && alertCount > 0 && (
                 <span className="relative grid min-w-5 place-items-center rounded-full bg-rose-500 px-1.5 text-[0.65rem] font-bold text-white shadow-[0_0_12px_rgba(244,63,94,0.7)]">
                   {alertCount}
@@ -146,9 +147,24 @@ export function Sidebar({
             </motion.button>
           )
         })}
+
+        {/* Link back to Onboarding & Tour */}
+        <div className="pt-2 mt-2 border-t border-line/40">
+          <button
+            type="button"
+            onClick={() => onNavigate('landing')}
+            className={cn(
+              'flex items-center gap-2.5 rounded-xl px-3.5 py-2 text-left text-xs font-medium text-subtle hover:text-fg transition-colors w-full',
+              screen === 'landing' && 'text-fg font-semibold bg-white/5'
+            )}
+          >
+            <Icon name="sparkles" size={15} className="text-cyan-glow" />
+            <span>Onboarding Tour &amp; Specs</span>
+          </button>
+        </div>
       </nav>
 
-      <div className="mt-4 flex flex-col gap-3 border-t border-line pt-4">
+      <div className="mt-3 flex flex-col gap-2.5 border-t border-line pt-3">
         {activePalette && onSelectPalette && (
           <div className="flex items-center justify-between">
             <span className="text-[0.65rem] font-semibold tracking-[0.16em] text-subtle uppercase">FX Theme</span>
@@ -157,7 +173,7 @@ export function Sidebar({
         )}
         <div className="flex items-center justify-between gap-2">
           <StatusBadge status={healthStatus} />
-          <ThemeToggle theme={theme} onToggle={onToggleTheme} className="size-9" />
+          <ThemeToggle theme={theme} onToggle={onToggleTheme} className="size-8" />
         </div>
         <UserChip email={userEmail} />
         <motion.button
@@ -166,9 +182,9 @@ export function Sidebar({
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.96 }}
           transition={spring}
-          className="flex items-center justify-center gap-2 rounded-xl border border-line px-3 py-2 text-xs text-muted transition-colors hover:border-rose-400/40 hover:bg-rose-500/10 hover:text-rose-300"
+          className="flex items-center justify-center gap-2 rounded-xl border border-line px-3 py-1.5 text-xs text-muted transition-colors hover:border-rose-400/40 hover:bg-rose-500/10 hover:text-rose-300"
         >
-          <Icon name="logout" size={15} /> Switch User / Reset
+          <Icon name="logout" size={14} /> Switch Account / Logout
         </motion.button>
       </div>
     </motion.aside>
@@ -193,10 +209,10 @@ export function MobileTopBar({
           <PaletteSwitcher activePalette={activePalette} onSelectPalette={onSelectPalette} />
         )}
         <StatusBadge status={healthStatus} />
-        <ThemeToggle theme={theme} onToggle={onToggleTheme} className="size-9" />
+        <ThemeToggle theme={theme} onToggle={onToggleTheme} className="size-8" />
         <button type="button" onClick={onSignOut} aria-label="Sign out"
-          className="glass grid size-9 place-items-center rounded-xl text-muted transition hover:text-rose-300">
-          <Icon name="logout" size={16} />
+          className="glass grid size-8 place-items-center rounded-xl text-muted transition hover:text-rose-300">
+          <Icon name="logout" size={15} />
         </button>
       </div>
     </header>
@@ -204,12 +220,20 @@ export function MobileTopBar({
 }
 
 export function MobileTabBar({ screen, onNavigate, alertCount }) {
+  const mobileNav = [
+    { id: 'dashboard', label: 'Dashboard', icon: 'dashboard' },
+    { id: 'alerts', label: 'Alerts', icon: 'bell' },
+    { id: 'upload', label: 'Ingest', icon: 'upload' },
+    { id: 'validation', label: 'Metrics', icon: 'check' },
+    { id: 'dossier', label: 'MITS', icon: 'file' },
+  ]
+
   return (
     <nav
       aria-label="Main navigation"
       className="glass-strong fixed inset-x-3 bottom-3 z-40 grid grid-cols-5 rounded-2xl p-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))] lg:hidden"
     >
-      {NAV.map(item => {
+      {mobileNav.map(item => {
         const active = isActive(screen, item.id)
         return (
           <button
@@ -224,13 +248,13 @@ export function MobileTabBar({ screen, onNavigate, alertCount }) {
                 className="absolute inset-0 rounded-xl border border-violet-glow/35 bg-violet-glow/20 shadow-[0_0_24px_-6px_rgba(139,92,246,0.8)]" />
             )}
             <span className="relative">
-              <Icon name={item.icon} size={19} />
+              <Icon name={item.icon} size={18} />
               {item.id === 'alerts' && alertCount > 0 && (
                 <span className="absolute -top-1.5 -right-2.5 grid min-w-4 place-items-center rounded-full bg-rose-500 px-1 text-[0.58rem] font-bold text-white">{alertCount}</span>
               )}
             </span>
             <span className="relative truncate max-w-[4rem]">
-              {item.id === 'lookup' ? 'Lookup' : item.id === 'landing' ? 'Tour' : item.id === 'upload' ? 'Upload' : item.label}
+              {item.label}
             </span>
           </button>
         )
@@ -244,10 +268,11 @@ export function Footer({ className }) {
     <footer className={cn('mt-16 border-t border-line py-6 text-xs text-subtle', className)}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2 font-medium text-muted">
-          <Icon name="shieldCheck" size={15} className="text-violet-300 light:text-violet-700" /> Warranty Radar
+          <Icon name="shieldCheck" size={15} className="text-violet-300 light:text-violet-700" />
+          <span>Warranty Radar · Submitted by Nikita Tripathi</span>
         </div>
-        <div>Protecting purchases across 10+ Indian retailers · Nikita Tripathi</div>
-        <div>© {new Date().getFullYear()} Warranty Radar · Production v0.4.0</div>
+        <div>Macro Project | Skills Development Monitoring System, MITS-DU Gwalior</div>
+        <div>Milestones 2, 3, 4 &amp; 5 · Deadline: 30 October 2026</div>
       </div>
     </footer>
   )

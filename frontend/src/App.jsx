@@ -12,6 +12,8 @@ import DetailView from './views/DetailView'
 import AlertsView from './views/AlertsView'
 import UploadView from './views/UploadView'
 import LookupView from './views/LookupView'
+import ValidationView from './views/ValidationView'
+import DossierView from './views/DossierView'
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
@@ -127,10 +129,10 @@ const DEMO_ALERTS = [
 ]
 
 export default function App() {
-  // ── Auth state (defaults to Nikita's production workspace) ────────────────
-  const [userId, setUserId] = useState(() => localStorage.getItem('wrd_user_id') || 'demo-user-1')
+  // ── Auth state ──────────────────────────────────────────────────────────────
+  const [userId, setUserId] = useState(() => localStorage.getItem('wrd_user_id') || '')
   const [userEmail, setUserEmail] = useState(() => {
-    const email = localStorage.getItem('wrd_user_email') || 'nikita.demo@gmail.com'
+    const email = localStorage.getItem('wrd_user_email') || ''
     if (email.includes('kartik')) {
       const updated = email.replace('kartik', 'nikita')
       localStorage.setItem('wrd_user_email', updated)
@@ -156,18 +158,20 @@ export default function App() {
   // ── Toasts ──────────────────────────────────────────────────────────────────
   const [toasts, addToast, removeToast] = useToasts()
 
-  // ── Navigation (default: dashboard) ─────────────────────────────────────────
-  const [screen, setScreen] = useState('dashboard')
+  // ── Navigation ──────────────────────────────────────────────────────────────
+  const [screen, setScreen] = useState(() => (localStorage.getItem('wrd_user_id') ? 'dashboard' : 'connect'))
 
   // ── Onboarding ──────────────────────────────────────────────────────────────
-  const [onboardStep, setOnboardStep] = useState(3)
-  const [hasOnboarded, setHasOnboarded] = useState(true)
+  const [onboardStep, setOnboardStep] = useState(0)
+  const [hasOnboarded, setHasOnboarded] = useState(() =>
+    Boolean(localStorage.getItem('wrd_onboarded'))
+  )
 
   // ── Health ──────────────────────────────────────────────────────────────────
-  const [healthStatus, setHealthStatus] = useState('ok')
+  const [healthStatus, setHealthStatus] = useState('checking')
 
   // ── Purchases ───────────────────────────────────────────────────────────────
-  const [purchases, setPurchases] = useState(() => DEMO_PURCHASES)
+  const [purchases, setPurchases] = useState([])
   const [purchasesLoading, setPurchasesLoading] = useState(false)
   const [purchasesError, setPurchasesError] = useState(null)
   const [selectedPurchase, setSelectedPurchase] = useState(null)
@@ -179,7 +183,7 @@ export default function App() {
   const [editError, setEditError] = useState(null)
 
   // ── Alerts ──────────────────────────────────────────────────────────────────
-  const [alerts, setAlerts] = useState(() => DEMO_ALERTS)
+  const [alerts, setAlerts] = useState([])
   const [alertsLoading, setAlertsLoading] = useState(false)
 
   // ── Upload ──────────────────────────────────────────────────────────────────
@@ -761,12 +765,21 @@ export default function App() {
                 />
               )}
 
+              {screen === 'validation' && (
+                <ValidationView onNavigate={setScreen} />
+              )}
+
+              {screen === 'dossier' && (
+                <DossierView onNavigate={setScreen} />
+              )}
+
               {screen === 'landing' && (
                 <LandingView
                   apiBase={API_BASE}
                   onboardStep={onboardStep}
                   onDemoAccess={() => setScreen('dashboard')}
                   activePalette={activePalette}
+                  onNavigate={setScreen}
                 />
               )}
 
