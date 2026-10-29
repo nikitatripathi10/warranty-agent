@@ -1,5 +1,5 @@
 import { motion } from 'motion/react'
-import { ConfidenceBadge, GlassCard } from './ui'
+import { ConfidenceBadge } from './ui'
 import { fmt, fmtDate, fmtPrice } from '../lib/format'
 import Icon from './Icon'
 

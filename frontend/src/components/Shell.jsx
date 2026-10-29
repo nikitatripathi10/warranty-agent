@@ -1,6 +1,7 @@
 import { motion } from 'motion/react'
 import Icon from './Icon'
 import { StatusBadge, UserChip, spring } from './ui'
+import PaletteSwitcher from './PaletteSwitcher'
 import { cn } from '../lib/utils'
 
 export function Logo({ compact = false }) {
@@ -42,7 +43,7 @@ export function ThemeToggle({ theme, onToggle, className }) {
 }
 
 /* ── Landing navbar (signed-out) ─────────────────────────────────────────── */
-export function TopNav({ healthStatus, theme, onToggleTheme }) {
+export function TopNav({ healthStatus, theme, onToggleTheme, activePalette, onSelectPalette }) {
   return (
     <motion.header
       initial={{ y: -40, opacity: 0 }}
@@ -53,6 +54,9 @@ export function TopNav({ healthStatus, theme, onToggleTheme }) {
       <Logo />
       <div className="flex items-center gap-2.5">
         <StatusBadge status={healthStatus} />
+        {activePalette && onSelectPalette && (
+          <PaletteSwitcher activePalette={activePalette} onSelectPalette={onSelectPalette} />
+        )}
         <ThemeToggle theme={theme} onToggle={onToggleTheme} />
       </div>
     </motion.header>
@@ -69,7 +73,18 @@ const NAV = [
 const isActive = (screen, id) => screen === id || (screen === 'detail' && id === 'dashboard')
 
 /* ── Desktop sidebar ─────────────────────────────────────────────────────── */
-export function Sidebar({ screen, onNavigate, alertCount, healthStatus, theme, onToggleTheme, userEmail, onSignOut }) {
+export function Sidebar({
+  screen,
+  onNavigate,
+  alertCount,
+  healthStatus,
+  theme,
+  onToggleTheme,
+  userEmail,
+  onSignOut,
+  activePalette,
+  onSelectPalette,
+}) {
   return (
     <motion.aside
       initial={{ x: -40, opacity: 0 }}
@@ -118,6 +133,12 @@ export function Sidebar({ screen, onNavigate, alertCount, healthStatus, theme, o
       </nav>
 
       <div className="mt-4 flex flex-col gap-3 border-t border-line pt-4">
+        {activePalette && onSelectPalette && (
+          <div className="flex items-center justify-between">
+            <span className="text-[0.65rem] font-semibold tracking-[0.16em] text-subtle uppercase">FX Theme</span>
+            <PaletteSwitcher activePalette={activePalette} onSelectPalette={onSelectPalette} />
+          </div>
+        )}
         <div className="flex items-center justify-between gap-2">
           <StatusBadge status={healthStatus} />
           <ThemeToggle theme={theme} onToggle={onToggleTheme} className="size-9" />
@@ -139,11 +160,21 @@ export function Sidebar({ screen, onNavigate, alertCount, healthStatus, theme, o
 }
 
 /* ── Mobile / tablet top bar + bottom tab bar ────────────────────────────── */
-export function MobileTopBar({ healthStatus, theme, onToggleTheme, onSignOut }) {
+export function MobileTopBar({
+  healthStatus,
+  theme,
+  onToggleTheme,
+  onSignOut,
+  activePalette,
+  onSelectPalette,
+}) {
   return (
     <header className="glass-strong sticky top-2 z-40 mx-2 mt-2 flex items-center justify-between rounded-2xl px-3.5 py-2 lg:hidden">
       <Logo compact />
       <div className="flex items-center gap-2">
+        {activePalette && onSelectPalette && (
+          <PaletteSwitcher activePalette={activePalette} onSelectPalette={onSelectPalette} />
+        )}
         <StatusBadge status={healthStatus} />
         <ThemeToggle theme={theme} onToggle={onToggleTheme} className="size-9" />
         <button type="button" onClick={onSignOut} aria-label="Sign out"

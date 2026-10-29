@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { ThemeContext } from './lib/theme-context'
 import { useTheme, useToasts, useURLParams } from './lib/hooks'
 import Background from './components/Background'
@@ -141,6 +141,16 @@ export default function App() {
 
   // ── Theme ───────────────────────────────────────────────────────────────────
   const [theme, toggleTheme] = useTheme()
+
+  // ── Animation FX Palette ────────────────────────────────────────────────────
+  const [activePalette, setActivePalette] = useState(() => {
+    return localStorage.getItem('wrd_palette') || 'cyberpunk'
+  })
+
+  const handleSelectPalette = useCallback((id) => {
+    setActivePalette(id)
+    localStorage.setItem('wrd_palette', id)
+  }, [])
 
   // ── Toasts ──────────────────────────────────────────────────────────────────
   const [toasts, addToast, removeToast] = useToasts()
@@ -594,8 +604,8 @@ export default function App() {
 
   return (
     <ThemeContext.Provider value={theme}>
-      {/* ── Background: Aurora + Beams + Particles ── */}
-      <Background theme={theme} />
+      {/* ── Background: Dynamic Neon Aurora + Beams + Interactive Torch + Particles ── */}
+      <Background theme={theme} paletteId={activePalette} />
 
       {/* ── Toast Notifications ── */}
       <ToastStack toasts={toasts} onRemove={removeToast} />
@@ -603,12 +613,19 @@ export default function App() {
       {/* ── Landing page for unauthenticated visitors ── */}
       {!isConnected && (
         <div className="min-h-screen flex flex-col justify-between">
-          <TopNav healthStatus={healthStatus} theme={theme} onToggleTheme={toggleTheme} />
+          <TopNav
+            healthStatus={healthStatus}
+            theme={theme}
+            onToggleTheme={toggleTheme}
+            activePalette={activePalette}
+            onSelectPalette={handleSelectPalette}
+          />
           <main className="flex-1">
             <LandingView
               apiBase={API_BASE}
               onboardStep={onboardStep}
               onDemoAccess={handleDemoAccess}
+              activePalette={activePalette}
             />
           </main>
           <Footer className="px-6" />
@@ -631,6 +648,8 @@ export default function App() {
             onToggleTheme={toggleTheme}
             userEmail={userEmail}
             onSignOut={handleDisconnect}
+            activePalette={activePalette}
+            onSelectPalette={handleSelectPalette}
           />
 
           {/* Mobile Top Header */}
@@ -639,6 +658,8 @@ export default function App() {
             theme={theme}
             onToggleTheme={toggleTheme}
             onSignOut={handleDisconnect}
+            activePalette={activePalette}
+            onSelectPalette={handleSelectPalette}
           />
 
           {/* Main Content Area */}
@@ -647,6 +668,7 @@ export default function App() {
               {screen === 'dashboard' && (
                 <DashboardView
                   userEmail={userEmail}
+                  activePalette={activePalette}
                   purchases={purchases}
                   purchasesLoading={purchasesLoading}
                   purchasesError={purchasesError}

@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import { motion } from 'motion/react'
-import { GlassCard, Button, Chip, EmptyState, Skeleton, containerStagger, itemRise } from '../components/ui'
-import { fmt, fmtDate, daysUntil, urgencyColor } from '../lib/format'
+import { GlassCard, Button, EmptyState, Skeleton, containerStagger, itemRise } from '../components/ui'
+import { fmt, fmtDate, urgencyColor } from '../lib/format'
 import Icon from '../components/Icon'
 
 export default function AlertsView({

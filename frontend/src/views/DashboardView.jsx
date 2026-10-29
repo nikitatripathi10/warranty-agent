@@ -2,6 +2,8 @@ import { useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
 import { NumberTicker } from '../components/magicui/number-ticker'
 import { GlassCard, Button, Spinner, Select, Skeleton, EmptyState, containerStagger, itemRise } from '../components/ui'
+import TiltCard from '../components/reactbits/TiltCard'
+import { ANIMATION_PALETTES } from '../lib/animation-theme'
 import WarrantyTimeline from '../components/WarrantyTimeline'
 import PurchaseCard from '../components/PurchaseCard'
 import PurchaseListItem from '../components/PurchaseListItem'
@@ -11,6 +13,7 @@ import Icon from '../components/Icon'
 
 export default function DashboardView({
   userEmail,
+  activePalette = 'cyberpunk',
   purchases,
   purchasesLoading,
   purchasesError,
@@ -41,6 +44,7 @@ export default function DashboardView({
   hasActiveFilters,
 }) {
   const [showAnalytics, setShowAnalytics] = useState(true)
+  const palette = ANIMATION_PALETTES[activePalette] || ANIMATION_PALETTES.cyberpunk
 
   // ── Metrics Calculation ──────────────────────────────────────────────────────
   const totalValue = useMemo(() => {
@@ -312,79 +316,87 @@ export default function DashboardView({
         >
           {/* Total Tracked */}
           <motion.div variants={itemRise}>
-            <GlassCard className="p-5" intensity={0.1}>
-              <div className="flex items-center justify-between text-xs text-subtle">
-                <span className="font-semibold uppercase tracking-wider">Total Tracked</span>
-                <span className="grid size-8 place-items-center rounded-lg bg-glass text-violet-300">
-                  <Icon name="package" size={17} />
-                </span>
-              </div>
-              <div className="my-2 font-display text-3xl font-bold tracking-tight text-fg">
-                <NumberTicker value={purchases.length} />
-              </div>
-              <div className="flex items-center justify-between text-xs text-muted">
-                <span>Active purchase items</span>
-                <Sparkline values={[4, 7, 10, 8, 14, 18, purchases.length]} color="#8b5cf6" className="w-16" />
-              </div>
-            </GlassCard>
+            <TiltCard maxTilt={8} className="h-full">
+              <GlassCard className="p-5 h-full" intensity={0.1}>
+                <div className="flex items-center justify-between text-xs text-subtle">
+                  <span className="font-semibold uppercase tracking-wider">Total Tracked</span>
+                  <span className="grid size-8 place-items-center rounded-lg bg-glass text-violet-300">
+                    <Icon name="package" size={17} />
+                  </span>
+                </div>
+                <div className="my-2 font-display text-3xl font-bold tracking-tight text-fg">
+                  <NumberTicker value={purchases.length} />
+                </div>
+                <div className="flex items-center justify-between text-xs text-muted">
+                  <span>Active purchase items</span>
+                  <Sparkline values={[4, 7, 10, 8, 14, 18, purchases.length]} color={palette.primary} className="w-16" />
+                </div>
+              </GlassCard>
+            </TiltCard>
           </motion.div>
 
           {/* Expiring Soon */}
           <motion.div variants={itemRise}>
-            <GlassCard
-              interactive
-              onClick={onAlertsClick}
-              className="p-5 cursor-pointer hover:border-amber-400/50"
-              intensity={0.1}
-            >
-              <div className="flex items-center justify-between text-xs text-subtle">
-                <span className="font-semibold uppercase tracking-wider">Expiring Soon</span>
-                <span className="grid size-8 place-items-center rounded-lg bg-amber-400/10 text-amber-300">
-                  <Icon name="clock" size={17} />
-                </span>
-              </div>
-              <div className="my-2 font-display text-3xl font-bold tracking-tight text-amber-300">
-                <NumberTicker value={expiringSoonCount} />
-              </div>
-              <div className="text-xs text-muted">Next 30 days window</div>
-            </GlassCard>
+            <TiltCard maxTilt={8} className="h-full">
+              <GlassCard
+                interactive
+                onClick={onAlertsClick}
+                className="p-5 h-full cursor-pointer hover:border-amber-400/50"
+                intensity={0.1}
+              >
+                <div className="flex items-center justify-between text-xs text-subtle">
+                  <span className="font-semibold uppercase tracking-wider">Expiring Soon</span>
+                  <span className="grid size-8 place-items-center rounded-lg bg-amber-400/10 text-amber-300">
+                    <Icon name="clock" size={17} />
+                  </span>
+                </div>
+                <div className="my-2 font-display text-3xl font-bold tracking-tight text-amber-300">
+                  <NumberTicker value={expiringSoonCount} />
+                </div>
+                <div className="text-xs text-muted">Next 30 days window</div>
+              </GlassCard>
+            </TiltCard>
           </motion.div>
 
           {/* Active Alerts */}
           <motion.div variants={itemRise}>
-            <GlassCard
-              interactive
-              onClick={onAlertsClick}
-              className="p-5 cursor-pointer hover:border-rose-400/50"
-              intensity={0.1}
-            >
-              <div className="flex items-center justify-between text-xs text-subtle">
-                <span className="font-semibold uppercase tracking-wider">Active Alerts</span>
-                <span className="grid size-8 place-items-center rounded-lg bg-rose-400/10 text-rose-300">
-                  <Icon name="bell" size={17} />
-                </span>
-              </div>
-              <div className="my-2 font-display text-3xl font-bold tracking-tight text-rose-300">
-                <NumberTicker value={alerts.length} />
-              </div>
-              <div className="text-xs text-muted">Return &amp; warranty reminders</div>
-            </GlassCard>
+            <TiltCard maxTilt={8} className="h-full">
+              <GlassCard
+                interactive
+                onClick={onAlertsClick}
+                className="p-5 h-full cursor-pointer hover:border-rose-400/50"
+                intensity={0.1}
+              >
+                <div className="flex items-center justify-between text-xs text-subtle">
+                  <span className="font-semibold uppercase tracking-wider">Active Alerts</span>
+                  <span className="grid size-8 place-items-center rounded-lg bg-rose-400/10 text-rose-300">
+                    <Icon name="bell" size={17} />
+                  </span>
+                </div>
+                <div className="my-2 font-display text-3xl font-bold tracking-tight text-rose-300">
+                  <NumberTicker value={alerts.length} />
+                </div>
+                <div className="text-xs text-muted">Return &amp; warranty reminders</div>
+              </GlassCard>
+            </TiltCard>
           </motion.div>
 
           {/* Protected Value */}
           <motion.div variants={itemRise}>
-            <GlassCard className="p-5" intensity={0.1}>
-              <div className="flex items-center justify-between text-xs text-subtle">
-                <span className="font-semibold uppercase tracking-wider">Value Protected</span>
-                <span className="grid size-8 place-items-center rounded-lg bg-cyan-glow/10 text-cyan-glow">
-                  <Icon name="shieldCheck" size={17} />
-                </span>
-              </div>
-              <div className="my-2 font-display text-3xl font-bold tracking-tight text-cyan-glow">
-                {fmtCompactINR(totalValue)}
-              </div>
-              <div className="text-xs text-muted">Across all indexed retailers</div>
-            </GlassCard>
+            <TiltCard maxTilt={8} className="h-full">
+              <GlassCard className="p-5 h-full" intensity={0.1}>
+                <div className="flex items-center justify-between text-xs text-subtle">
+                  <span className="font-semibold uppercase tracking-wider">Value Protected</span>
+                  <span className="grid size-8 place-items-center rounded-lg bg-cyan-glow/10 text-cyan-glow">
+                    <Icon name="shieldCheck" size={17} />
+                  </span>
+                </div>
+                <div className="my-2 font-display text-3xl font-bold tracking-tight text-cyan-glow">
+                  {fmtCompactINR(totalValue)}
+                </div>
+                <div className="text-xs text-muted">Across all indexed retailers</div>
+              </GlassCard>
+            </TiltCard>
           </motion.div>
         </motion.div>
       )}
