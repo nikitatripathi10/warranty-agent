@@ -36,3 +36,4 @@ export default function CursorTorch({ color = '#ec4899', secondaryColor = '#06b6
     />
   )
 }
+

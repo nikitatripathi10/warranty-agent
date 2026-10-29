@@ -38,3 +38,4 @@ export default function PaletteSwitcher({ activePalette, onSelectPalette }) {
     </motion.button>
   )
 }
+

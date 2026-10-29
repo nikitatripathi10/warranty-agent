@@ -158,7 +158,7 @@ export default function LandingView({ apiBase, onboardStep, onDemoAccess, active
       </LampContainer>
 
       {/* Interactive 3D Radar Scanner + Live Preview Stage */}
-      <section className="mx-auto -mt-6 max-w-5xl px-4 sm:px-6">
+      <section className="mx-auto mt-10 sm:mt-14 max-w-5xl px-4 sm:px-6">
         <motion.div
           initial={{ opacity: 0, y: 24 }}
           whileInView={{ opacity: 1, y: 0 }}

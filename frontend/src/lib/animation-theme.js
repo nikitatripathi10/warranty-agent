@@ -64,3 +64,4 @@ export const ANIMATION_PALETTES = {
     torchSecondary: '#ec4899',
   },
 }
+

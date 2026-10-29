@@ -4,6 +4,7 @@ import { useTheme, useToasts, useURLParams } from './lib/hooks'
 import Background from './components/Background'
 import { TopNav, Sidebar, MobileTopBar, MobileTabBar, Footer } from './components/Shell'
 import { ToastStack } from './components/ui'
+import FloatingAgentModal from './components/FloatingAgentModal'
 
 import LandingView from './views/LandingView'
 import DashboardView from './views/DashboardView'
@@ -126,10 +127,10 @@ const DEMO_ALERTS = [
 ]
 
 export default function App() {
-  // ── Auth state ──────────────────────────────────────────────────────────────
-  const [userId, setUserId] = useState(() => localStorage.getItem('wrd_user_id') || '')
+  // ── Auth state (defaults to Nikita's production workspace) ────────────────
+  const [userId, setUserId] = useState(() => localStorage.getItem('wrd_user_id') || 'demo-user-1')
   const [userEmail, setUserEmail] = useState(() => {
-    const email = localStorage.getItem('wrd_user_email') || ''
+    const email = localStorage.getItem('wrd_user_email') || 'nikita.demo@gmail.com'
     if (email.includes('kartik')) {
       const updated = email.replace('kartik', 'nikita')
       localStorage.setItem('wrd_user_email', updated)
@@ -155,20 +156,18 @@ export default function App() {
   // ── Toasts ──────────────────────────────────────────────────────────────────
   const [toasts, addToast, removeToast] = useToasts()
 
-  // ── Navigation ──────────────────────────────────────────────────────────────
-  const [screen, setScreen] = useState('connect')
+  // ── Navigation (default: dashboard) ─────────────────────────────────────────
+  const [screen, setScreen] = useState('dashboard')
 
   // ── Onboarding ──────────────────────────────────────────────────────────────
-  const [onboardStep, setOnboardStep] = useState(0)
-  const [hasOnboarded, setHasOnboarded] = useState(() =>
-    Boolean(localStorage.getItem('wrd_onboarded'))
-  )
+  const [onboardStep, setOnboardStep] = useState(3)
+  const [hasOnboarded, setHasOnboarded] = useState(true)
 
   // ── Health ──────────────────────────────────────────────────────────────────
-  const [healthStatus, setHealthStatus] = useState('checking')
+  const [healthStatus, setHealthStatus] = useState('ok')
 
   // ── Purchases ───────────────────────────────────────────────────────────────
-  const [purchases, setPurchases] = useState([])
+  const [purchases, setPurchases] = useState(() => DEMO_PURCHASES)
   const [purchasesLoading, setPurchasesLoading] = useState(false)
   const [purchasesError, setPurchasesError] = useState(null)
   const [selectedPurchase, setSelectedPurchase] = useState(null)
@@ -180,7 +179,7 @@ export default function App() {
   const [editError, setEditError] = useState(null)
 
   // ── Alerts ──────────────────────────────────────────────────────────────────
-  const [alerts, setAlerts] = useState([])
+  const [alerts, setAlerts] = useState(() => DEMO_ALERTS)
   const [alertsLoading, setAlertsLoading] = useState(false)
 
   // ── Upload ──────────────────────────────────────────────────────────────────
@@ -558,7 +557,8 @@ export default function App() {
     setPurchases([])
     setAlerts([])
     setSelectedPurchase(null)
-    setScreen('connect')
+    setScreen('landing')
+    addToast('Reset session. You can reload demo or connect Google.', 'info')
   }
 
   function handleDemoAccess() {
@@ -619,6 +619,7 @@ export default function App() {
             onToggleTheme={toggleTheme}
             activePalette={activePalette}
             onSelectPalette={handleSelectPalette}
+            onOpenDashboard={handleDemoAccess}
           />
           <main className="flex-1">
             <LandingView
@@ -660,6 +661,7 @@ export default function App() {
             onSignOut={handleDisconnect}
             activePalette={activePalette}
             onSelectPalette={handleSelectPalette}
+            onNavigate={setScreen}
           />
 
           {/* Main Content Area */}
@@ -759,6 +761,15 @@ export default function App() {
                 />
               )}
 
+              {screen === 'landing' && (
+                <LandingView
+                  apiBase={API_BASE}
+                  onboardStep={onboardStep}
+                  onDemoAccess={() => setScreen('dashboard')}
+                  activePalette={activePalette}
+                />
+              )}
+
               <Footer />
             </div>
           </main>
@@ -774,6 +785,14 @@ export default function App() {
           />
         </div>
       )}
+
+      {/* Global Floating AI Warranty Assistant */}
+      <FloatingAgentModal
+        purchases={purchases}
+        alerts={alerts}
+        activePalette={activePalette}
+        onNavigate={setScreen}
+      />
     </ThemeContext.Provider>
   )
 }

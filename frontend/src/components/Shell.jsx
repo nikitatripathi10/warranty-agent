@@ -4,9 +4,12 @@ import { StatusBadge, UserChip, spring } from './ui'
 import PaletteSwitcher from './PaletteSwitcher'
 import { cn } from '../lib/utils'
 
-export function Logo({ compact = false }) {
+export function Logo({ compact = false, onClick }) {
   return (
-    <div className="flex items-center gap-3">
+    <div
+      onClick={onClick}
+      className={cn('flex items-center gap-3', onClick && 'cursor-pointer hover:opacity-90 transition')}
+    >
       <div className="relative grid size-10 place-items-center overflow-hidden rounded-xl bg-linear-to-br from-violet-glow via-electric to-cyan-glow text-white shadow-[0_0_28px_rgba(99,102,241,0.7)]">
         <span className="animate-radar absolute inset-0 bg-[conic-gradient(from_0deg,transparent_0deg,rgba(255,255,255,0.55)_40deg,transparent_70deg)]" />
         <Icon name="shieldCheck" size={20} className="relative" strokeWidth={2} />
@@ -14,7 +17,7 @@ export function Logo({ compact = false }) {
       {!compact && (
         <div className="leading-tight">
           <div className="font-display text-[1.05rem] font-bold tracking-tight">Warranty Radar</div>
-          <div className="text-[0.62rem] font-medium tracking-[0.18em] text-subtle uppercase">v0.4 · Purchase guardian</div>
+          <div className="text-[0.62rem] font-medium tracking-[0.18em] text-subtle uppercase">v0.4 · Nikita's Workspace</div>
         </div>
       )}
     </div>
@@ -42,8 +45,8 @@ export function ThemeToggle({ theme, onToggle, className }) {
   )
 }
 
-/* ── Landing navbar (signed-out) ─────────────────────────────────────────── */
-export function TopNav({ healthStatus, theme, onToggleTheme, activePalette, onSelectPalette }) {
+/* ── Landing navbar ───────────────────────────────────────────────────────── */
+export function TopNav({ healthStatus, theme, onToggleTheme, activePalette, onSelectPalette, onOpenDashboard }) {
   return (
     <motion.header
       initial={{ y: -40, opacity: 0 }}
@@ -51,8 +54,18 @@ export function TopNav({ healthStatus, theme, onToggleTheme, activePalette, onSe
       transition={{ type: 'spring', stiffness: 160, damping: 20 }}
       className="sticky top-3 z-40 mx-auto mt-3 flex w-[min(96%,72rem)] items-center justify-between rounded-2xl glass-strong px-4 py-2.5 sm:px-5"
     >
-      <Logo />
+      <Logo onClick={onOpenDashboard} />
       <div className="flex items-center gap-2.5">
+        {onOpenDashboard && (
+          <button
+            type="button"
+            onClick={onOpenDashboard}
+            className="flex items-center gap-2 rounded-xl bg-linear-to-r from-violet-600 to-cyan-500 px-3.5 py-1.5 text-xs font-semibold text-white shadow-md hover:opacity-95 transition"
+          >
+            <Icon name="dashboard" size={14} />
+            <span className="hidden sm:inline">Open Dashboard</span>
+          </button>
+        )}
         <StatusBadge status={healthStatus} />
         {activePalette && onSelectPalette && (
           <PaletteSwitcher activePalette={activePalette} onSelectPalette={onSelectPalette} />
@@ -63,11 +76,12 @@ export function TopNav({ healthStatus, theme, onToggleTheme, activePalette, onSe
   )
 }
 
-const NAV = [
+export const NAV = [
   { id: 'dashboard', label: 'Dashboard', icon: 'dashboard' },
   { id: 'alerts', label: 'Alerts', icon: 'bell' },
-  { id: 'upload', label: 'Upload', icon: 'upload' },
+  { id: 'upload', label: 'Upload Receipt', icon: 'upload' },
   { id: 'lookup', label: 'Quick Lookup', icon: 'search' },
+  { id: 'landing', label: 'Showcase Tour', icon: 'sparkles' },
 ]
 
 const isActive = (screen, id) => screen === id || (screen === 'detail' && id === 'dashboard')
@@ -93,7 +107,9 @@ export function Sidebar({
       className="glass-strong fixed top-3 bottom-3 left-3 z-40 hidden w-[17rem] flex-col rounded-3xl p-4 lg:flex"
       aria-label="Primary"
     >
-      <div className="px-2 pt-1 pb-5"><Logo /></div>
+      <div className="px-2 pt-1 pb-5">
+        <Logo onClick={() => onNavigate('dashboard')} />
+      </div>
 
       <nav className="flex flex-1 flex-col gap-1" aria-label="Main navigation">
         <div className="px-3 pb-2 text-[0.65rem] font-semibold tracking-[0.18em] text-subtle uppercase">Menu</div>
@@ -150,9 +166,9 @@ export function Sidebar({
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.96 }}
           transition={spring}
-          className="flex items-center justify-center gap-2 rounded-xl border border-line px-3 py-2.5 text-sm text-muted transition-colors hover:border-rose-400/40 hover:bg-rose-500/10 hover:text-rose-300"
+          className="flex items-center justify-center gap-2 rounded-xl border border-line px-3 py-2 text-xs text-muted transition-colors hover:border-rose-400/40 hover:bg-rose-500/10 hover:text-rose-300"
         >
-          <Icon name="logout" size={16} /> Sign out
+          <Icon name="logout" size={15} /> Switch User / Reset
         </motion.button>
       </div>
     </motion.aside>
@@ -167,10 +183,11 @@ export function MobileTopBar({
   onSignOut,
   activePalette,
   onSelectPalette,
+  onNavigate,
 }) {
   return (
     <header className="glass-strong sticky top-2 z-40 mx-2 mt-2 flex items-center justify-between rounded-2xl px-3.5 py-2 lg:hidden">
-      <Logo compact />
+      <Logo compact onClick={() => onNavigate && onNavigate('dashboard')} />
       <div className="flex items-center gap-2">
         {activePalette && onSelectPalette && (
           <PaletteSwitcher activePalette={activePalette} onSelectPalette={onSelectPalette} />
@@ -190,7 +207,7 @@ export function MobileTabBar({ screen, onNavigate, alertCount }) {
   return (
     <nav
       aria-label="Main navigation"
-      className="glass-strong fixed inset-x-3 bottom-3 z-40 grid grid-cols-4 rounded-2xl p-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))] lg:hidden"
+      className="glass-strong fixed inset-x-3 bottom-3 z-40 grid grid-cols-5 rounded-2xl p-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))] lg:hidden"
     >
       {NAV.map(item => {
         const active = isActive(screen, item.id)
@@ -200,19 +217,21 @@ export function MobileTabBar({ screen, onNavigate, alertCount }) {
             type="button"
             onClick={() => onNavigate(item.id)}
             aria-current={active ? 'page' : undefined}
-            className={cn('relative flex flex-col items-center gap-1 rounded-xl py-2 text-[0.66rem] font-medium transition-colors', active ? 'text-fg' : 'text-subtle')}
+            className={cn('relative flex flex-col items-center gap-1 rounded-xl py-2 text-[0.62rem] font-medium transition-colors', active ? 'text-fg' : 'text-subtle')}
           >
             {active && (
               <motion.span layoutId="tab-active" transition={spring}
                 className="absolute inset-0 rounded-xl border border-violet-glow/35 bg-violet-glow/20 shadow-[0_0_24px_-6px_rgba(139,92,246,0.8)]" />
             )}
             <span className="relative">
-              <Icon name={item.icon} size={20} />
+              <Icon name={item.icon} size={19} />
               {item.id === 'alerts' && alertCount > 0 && (
                 <span className="absolute -top-1.5 -right-2.5 grid min-w-4 place-items-center rounded-full bg-rose-500 px-1 text-[0.58rem] font-bold text-white">{alertCount}</span>
               )}
             </span>
-            <span className="relative">{item.id === 'lookup' ? 'Lookup' : item.label}</span>
+            <span className="relative truncate max-w-[4rem]">
+              {item.id === 'lookup' ? 'Lookup' : item.id === 'landing' ? 'Tour' : item.id === 'upload' ? 'Upload' : item.label}
+            </span>
           </button>
         )
       })}
@@ -227,10 +246,9 @@ export function Footer({ className }) {
         <div className="flex items-center gap-2 font-medium text-muted">
           <Icon name="shieldCheck" size={15} className="text-violet-300 light:text-violet-700" /> Warranty Radar
         </div>
-        <div>Protecting purchases across 10+ Indian retailers</div>
-        <div>© {new Date().getFullYear()} Warranty Radar · v0.4.0</div>
+        <div>Protecting purchases across 10+ Indian retailers · Nikita Tripathi</div>
+        <div>© {new Date().getFullYear()} Warranty Radar · Production v0.4.0</div>
       </div>
     </footer>
   )
 }
-
