@@ -34,6 +34,64 @@ router = APIRouter()
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
+_INVALID_PRODUCT_NAMES = {
+    "",
+    "unnamed product",
+    "unknown product",
+    "unknown",
+    "product",
+    "item",
+    "none",
+    "null",
+    "n/a",
+    "—",
+    "-",
+}
+
+_INVALID_VENDORS = {
+    "",
+    "unknown retailer",
+    "unknown",
+    "demo electronics",
+    "demo",
+    "sample",
+    "placeholder",
+    "none",
+    "null",
+    "n/a",
+    "—",
+    "-",
+}
+
+
+def _is_genuine_purchase_row(purchase: Purchase) -> bool:
+    """
+    Return True only if the purchase row represents a genuine scanned/extracted
+    product with a real product name and a real retailer or brand (no unnamed,
+    unknown-retailer, or demo entries).
+    """
+    name = (purchase.product_name or "").strip()
+    if not name or name.lower() in _INVALID_PRODUCT_NAMES:
+        return False
+
+    retailer = (purchase.retailer or "").strip()
+    brand = (purchase.brand or "").strip()
+    vendor = retailer or brand
+    if not vendor or vendor.lower() in _INVALID_VENDORS:
+        return False
+    if retailer.lower() in _INVALID_VENDORS and retailer != "":
+        return False
+    if brand.lower() in _INVALID_VENDORS and brand != "":
+        return False
+
+    wp = purchase.warranty_period
+    snippet = (wp.source_snippet or "").lower() if wp else ""
+    if "demo-2026" in snippet or "demo electronics" in snippet:
+        return False
+
+    return True
+
+
 def _get_user_or_404(db: Session, user_id: uuid.UUID) -> User:
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
@@ -103,7 +161,28 @@ def list_purchases(
     if source_type:
         query = query.filter(Purchase.source_type == source_type)
 
-    purchases = query.all()
+    all_rows = query.all()
+
+    # Automatically purge any invalid, unnamed, unknown-retailer, or demo records
+    purchases: list[Purchase] = []
+    purged_count = 0
+    for row in all_rows:
+        if _is_genuine_purchase_row(row):
+            purchases.append(row)
+        else:
+            try:
+                db.delete(row)
+                purged_count += 1
+            except Exception as exc:
+                logger.warning("Failed to purge invalid purchase row %s: %s", row.id, exc)
+
+    if purged_count > 0:
+        try:
+            db.commit()
+            logger.info("Purged %d invalid/unnamed/demo purchase rows for user %s", purged_count, user_id)
+        except Exception as exc:
+            db.rollback()
+            logger.warning("Rollback during invalid row purge for user %s: %s", user_id, exc)
 
     # Sort
     if sort_by == "urgency":

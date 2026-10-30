@@ -60,6 +60,73 @@ _MAX_UPLOAD_BYTES = 20 * 1024 * 1024  # 20 MB hard limit
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
+_INVALID_PRODUCT_NAMES = {
+    "",
+    "unnamed product",
+    "unknown product",
+    "unknown",
+    "product",
+    "item",
+    "none",
+    "null",
+    "n/a",
+    "—",
+    "-",
+}
+
+_INVALID_VENDORS = {
+    "",
+    "unknown retailer",
+    "unknown",
+    "demo electronics",
+    "demo",
+    "sample",
+    "placeholder",
+    "none",
+    "null",
+    "n/a",
+    "—",
+    "-",
+}
+
+
+def _is_valid_extracted_purchase(result: Optional[ExtractionResult]) -> bool:
+    """
+    Validate that an ExtractionResult represents a genuine product with a real
+    name and a known retailer/brand (never unnamed, unknown-retailer, or demo).
+    """
+    if result is None:
+        return False
+
+    name = (result.product_name or "").strip()
+    if not name or name.lower() in _INVALID_PRODUCT_NAMES:
+        return False
+
+    retailer = (result.retailer or "").strip()
+    brand = (result.brand or "").strip()
+
+    if retailer.lower() in _INVALID_VENDORS:
+        retailer = ""
+        result.retailer = None
+    if brand.lower() in _INVALID_VENDORS:
+        brand = ""
+        result.brand = None
+
+    vendor = retailer or brand
+    if not vendor:
+        return False
+
+    # Ensure retailer is populated from brand if retailer was missing
+    if not result.retailer and result.brand:
+        result.retailer = result.brand
+
+    snippet = (result.source_snippet or "").lower()
+    if "demo-2026" in snippet or "demo electronics" in snippet:
+        return False
+
+    return True
+
+
 def _get_user_or_404(db: Session, user_id: uuid.UUID) -> User:
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
@@ -313,11 +380,11 @@ def fetch_emails(
 
             result = _run_extraction_pipeline(combined_text, hint=hint)
 
-            # Guard against persisting records without an identifiable product name
-            if not result.product_name:
-                logger.warning("No product name extracted from email %s — skipping", msg_id)
+            # Guard against persisting records without an identifiable product name & vendor
+            if not _is_valid_extracted_purchase(result):
+                logger.warning("Incomplete or demo extraction from email %s — skipping", msg_id)
                 failed += 1
-                errors.append(f"msg:{msg_id} — no product name detected")
+                errors.append(f"msg:{msg_id} — incomplete product or retailer details")
                 continue
 
             if existing:
@@ -453,6 +520,21 @@ async def upload_document(
             text,
             file_bytes=file_bytes,
             mime_type=content_type,
+        )
+
+    # Guard against saving empty, unnamed, or unknown-retailer records to the database
+    if not _is_valid_extracted_purchase(result):
+        logger.warning(
+            "Upload extraction did not yield valid product/retailer for user %s (file=%r) — rejecting save",
+            user_id,
+            safe_filename,
+        )
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                "Could not extract valid product and retailer details from this document. "
+                "Please upload a clear invoice, receipt, or warranty slip."
+            ),
         )
 
     # -- Persist to DB --

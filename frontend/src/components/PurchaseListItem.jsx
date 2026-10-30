@@ -30,10 +30,10 @@ export default function PurchaseListItem({ purchase, onSelect, onDelete }) {
         </span>
         <div className="min-w-0">
           <h4 className="truncate text-sm font-semibold text-fg group-hover:text-cyan-glow transition-colors">
-            {fmt(purchase.product_name, 'Unnamed Product')}
+            {fmt(purchase.product_name, '')}
           </h4>
           <div className="flex flex-wrap items-center gap-x-3 text-xs text-subtle">
-            <span className="font-medium text-muted">{fmt(purchase.retailer || purchase.brand, 'Unknown')}</span>
+            <span className="font-medium text-muted">{fmt(purchase.retailer || purchase.brand, '')}</span>
             {purchase.purchase_date && <span>🗓 {fmtDate(purchase.purchase_date)}</span>}
             {purchase.price && <span className="font-semibold text-fg">💰 {fmtPrice(purchase.price)}</span>}
             {purchase.family_member && <span>👤 {purchase.family_member}</span>}

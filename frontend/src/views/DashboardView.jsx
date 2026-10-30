@@ -76,7 +76,8 @@ export default function DashboardView({
   const topRetailers = useMemo(() => {
     const map = new Map()
     purchases.forEach(p => {
-      const name = p.retailer || p.brand || 'Other'
+      const name = (p.retailer || p.brand || '').trim()
+      if (!name) return
       const existing = map.get(name) || { value: 0, count: 0 }
       map.set(name, {
         value: existing.value + (Number(p.price) || 0),
@@ -339,7 +340,7 @@ export default function DashboardView({
                 </div>
                 <div className="flex items-center justify-between text-xs text-muted">
                   <span>Active purchase items</span>
-                  <Sparkline values={[4, 7, 10, 8, 14, 18, purchases.length]} color={palette.primary} className="w-16" />
+                  <Sparkline values={[purchases.length, purchases.length]} color={palette.primary} className="w-16" />
                 </div>
               </GlassCard>
             </TiltCard>
@@ -623,8 +624,8 @@ export default function DashboardView({
       {!purchasesLoading && purchases.length === 0 && (
         <EmptyState
           icon="package"
-          title="No purchases tracked yet"
-          sub="Click 'Scan Inbox' to sync orders from your Gmail account, or upload an invoice PDF."
+          title="No products found"
+          sub="No products found. Scan a product or connect Gmail to get started."
           action={
             <div className="mt-2 flex flex-wrap gap-3">
               <Button variant="primary" size="md" onClick={onScanInbox} disabled={fetchLoading}>

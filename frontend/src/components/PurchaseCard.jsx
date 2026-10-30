@@ -46,7 +46,7 @@ export default function PurchaseCard({ purchase, onSelect, onDelete }) {
                 {purchase.source_type === 'email' ? '📧' : '📄'}
               </span>
               <span className="truncate text-xs font-semibold uppercase tracking-wider text-muted">
-                {fmt(purchase.retailer || purchase.brand, 'Unknown Retailer')}
+                {fmt(purchase.retailer || purchase.brand, '')}
               </span>
             </div>
             <div className="flex items-center gap-1.5">
@@ -70,7 +70,7 @@ export default function PurchaseCard({ purchase, onSelect, onDelete }) {
 
           {/* Product Title */}
           <h4 className="mb-2 text-base font-semibold leading-snug text-fg transition-colors group-hover:text-cyan-glow line-clamp-2">
-            {fmt(purchase.product_name, 'Unnamed Product')}
+            {fmt(purchase.product_name, '')}
           </h4>
 
           {/* Purchase details */}

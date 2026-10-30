@@ -88,6 +88,8 @@ def list_alert_history(
 
     result = []
     for alert, purchase in alerts_rows:
+        if not purchase.product_name or not (purchase.retailer or purchase.brand):
+            continue
         fire_date_val = alert.fire_date.date()
         days_until = (fire_date_val - date.today()).days
         result.append(AlertOut(

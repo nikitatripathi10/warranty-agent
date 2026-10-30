@@ -22,6 +22,75 @@ const API_BASE =
     ? 'https://warranty-agent.onrender.com'
     : 'http://localhost:8000')
 
+const INVALID_PRODUCT_NAMES = new Set([
+  '',
+  'unnamed product',
+  'unknown product',
+  'unknown',
+  'product',
+  'item',
+  'none',
+  'null',
+  'n/a',
+  '—',
+  '-',
+])
+
+const INVALID_VENDORS = new Set([
+  '',
+  'unknown retailer',
+  'unknown',
+  'demo electronics',
+  'demo',
+  'sample',
+  'placeholder',
+  'none',
+  'null',
+  'n/a',
+  '—',
+  '-',
+])
+
+function isGenuinePurchase(p) {
+  if (!p || typeof p !== 'object') return false
+  const name = String(p.product_name || '').trim()
+  const retailer = String(p.retailer || '').trim()
+  const brand = String(p.brand || '').trim()
+  const vendor = retailer || brand
+
+  if (!name || INVALID_PRODUCT_NAMES.has(name.toLowerCase())) return false
+  if (!vendor || INVALID_VENDORS.has(vendor.toLowerCase())) return false
+  if (retailer && INVALID_VENDORS.has(retailer.toLowerCase())) return false
+  if (brand && INVALID_VENDORS.has(brand.toLowerCase())) return false
+
+  const snippet = String(p.warranty_period?.source_snippet || '').toLowerCase()
+  if (snippet.includes('demo-2026') || snippet.includes('demo electronics')) return false
+
+  return true
+}
+
+function getDeletedPurchaseIds(userId) {
+  if (!userId) return new Set()
+  try {
+    const raw = localStorage.getItem(`wrd_deleted_purchases_${userId}`)
+    const arr = raw ? JSON.parse(raw) : []
+    return new Set(Array.isArray(arr) ? arr : [])
+  } catch {
+    return new Set()
+  }
+}
+
+function addDeletedPurchaseId(userId, purchaseId) {
+  if (!userId || !purchaseId) return
+  try {
+    const set = getDeletedPurchaseIds(userId)
+    set.add(purchaseId)
+    localStorage.setItem(`wrd_deleted_purchases_${userId}`, JSON.stringify([...set]))
+  } catch {
+    /* ignore storage errors */
+  }
+}
+
 async function prepareFileForUpload(file) {
   if (!file || !file.type || !file.type.startsWith('image/')) {
     return file
@@ -217,7 +286,33 @@ export default function App() {
       const res = await fetch(`${API_BASE}/purchases?user_id=${encodeURIComponent(userId)}`)
       const data = await res.json()
       if (!res.ok) throw new Error(data.detail || `HTTP ${res.status}`)
-      setPurchases(data.purchases || [])
+      const rawList = Array.isArray(data.purchases) ? data.purchases : []
+      const deletedIds = getDeletedPurchaseIds(userId)
+
+      const validList = []
+      const invalidOrDeletedIds = []
+
+      for (const item of rawList) {
+        if (!item?.id) continue
+        if (deletedIds.has(item.id) || !isGenuinePurchase(item)) {
+          invalidOrDeletedIds.push(item.id)
+        } else {
+          validList.push(item)
+        }
+      }
+
+      setPurchases(validList)
+
+      // Permanently purge any unnamed, unknown-retailer, demo, or previously deleted items from DB
+      if (invalidOrDeletedIds.length > 0) {
+        Promise.allSettled(
+          invalidOrDeletedIds.map(id =>
+            fetch(`${API_BASE}/purchases/${id}?user_id=${encodeURIComponent(userId)}`, {
+              method: 'DELETE',
+            })
+          )
+        )
+      }
     } catch (err) {
       setPurchasesError(err.message)
     } finally {
@@ -231,7 +326,19 @@ export default function App() {
     try {
       const res = await fetch(`${API_BASE}/alerts?user_id=${encodeURIComponent(userId)}&days_ahead=60`)
       const data = await res.json()
-      if (res.ok) setAlerts(data.alerts || [])
+      if (res.ok) {
+        const deletedIds = getDeletedPurchaseIds(userId)
+        const rawAlerts = Array.isArray(data.alerts) ? data.alerts : []
+        const validAlerts = rawAlerts.filter(a => {
+          if (!a || deletedIds.has(a.purchase_id)) return false
+          const name = String(a.product_name || '').trim()
+          const vendor = String(a.retailer || a.brand || '').trim()
+          if (!name || INVALID_PRODUCT_NAMES.has(name.toLowerCase())) return false
+          if (!vendor || INVALID_VENDORS.has(vendor.toLowerCase())) return false
+          return true
+        })
+        setAlerts(validAlerts)
+      }
     } catch {
       /* silent */
     } finally {
@@ -301,7 +408,7 @@ export default function App() {
           )
           if (checkRes.ok) {
             const checkData = await checkRes.json()
-            const list = checkData.purchases || []
+            const list = (checkData.purchases || []).filter(isGenuinePurchase)
             const newest = list.find(p => !prevIds.has(p.id) && p.source_type === 'upload')
             if (newest) {
               clearInterval(prog)
@@ -336,75 +443,15 @@ export default function App() {
       const data = await res.json()
       if (!res.ok) throw new Error(data.detail || `HTTP ${res.status}`)
 
-      // Ensure extraction fields are enriched even if cloud OCR container is mid-redeploy
-      if (data?.extraction && !data.extraction.product_name) {
-        const fname = (uploadFile?.name || '').toLowerCase()
-        let fallbackExt = null
-        if (fname.includes('17.51.33')) {
-          fallbackExt = {
-            product_name: 'Orange Powder, Walnuts, Coin (+3 more)',
-            brand: 'Sleek Bill',
-            retailer: 'Sleek Bill',
-            purchase_date: '2025-01-23',
-            price: 968.0,
-            warranty_period_months: 6,
-            return_window_days: 7,
-            confidence: 'high',
-            warranty_end_date: '2025-07-22',
-            return_window_end_date: '2025-01-30',
-          }
-        } else if (fname.includes('17.46.29')) {
-          fallbackExt = {
-            product_name: 'Hp-15s-FD0485TU NOTEBOOK (S/N: SCDS126KQ1)',
-            brand: 'HP',
-            retailer: 'Porwal Computer',
-            purchase_date: '2025-08-20',
-            price: 35500.0,
-            warranty_period_months: 12,
-            return_window_days: 10,
-            confidence: 'high',
-            warranty_end_date: '2026-08-15',
-            return_window_end_date: '2025-08-30',
-          }
-        } else if (fname.includes('iteminvoice')) {
-          fallbackExt = {
-            product_name: 'Style Quotient Smart Spread Collar Shirt, Size: S',
-            brand: 'Style Quotient',
-            retailer: 'Myntra',
-            purchase_date: '2026-04-20',
-            price: 1299.0,
-            warranty_period_months: 6,
-            return_window_days: 30,
-            confidence: 'high',
-            warranty_end_date: '2026-10-17',
-            return_window_end_date: '2026-05-20',
-          }
+      if (!data?.extraction?.product_name || !isGenuinePurchase(data?.purchase || data?.extraction)) {
+        if (data?.purchase?.id) {
+          fetch(`${API_BASE}/purchases/${data.purchase.id}?user_id=${encodeURIComponent(userId)}`, {
+            method: 'DELETE',
+          }).catch(() => {})
         }
-        if (fallbackExt) {
-          data.extraction = { ...data.extraction, ...fallbackExt }
-          if (data.purchase?.id) {
-            try {
-              await fetch(
-                `${API_BASE}/purchases/${data.purchase.id}?user_id=${encodeURIComponent(userId)}`,
-                {
-                  method: 'PATCH',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    product_name: fallbackExt.product_name,
-                    brand: fallbackExt.brand,
-                    retailer: fallbackExt.retailer,
-                    purchase_date: fallbackExt.purchase_date,
-                    price: fallbackExt.price,
-                    warranty_end_date: fallbackExt.warranty_end_date,
-                    return_window_end_date: fallbackExt.return_window_end_date,
-                  }),
-                }
-              )
-            } catch {
-              /* ignore patch error */
-            }
-          }
-        }
+        throw new Error(
+          'Could not extract valid product and retailer details from this document. Please upload a clear invoice or warranty card.'
+        )
       }
 
       setFilterConf('')
@@ -484,16 +531,22 @@ export default function App() {
   }
 
   async function handleDeletePurchase(purchaseId) {
-    if (!confirm('Delete this purchase record? This cannot be undone.')) return
+    if (!purchaseId) return
+
+    addDeletedPurchaseId(userId, purchaseId)
+    setPurchases(prev => prev.filter(p => p.id !== purchaseId))
+    setAlerts(prev => prev.filter(a => a.purchase_id !== purchaseId))
+    if (selectedPurchase?.id === purchaseId) {
+      setSelectedPurchase(null)
+      setScreen('dashboard')
+    }
+    addToast('Purchase record deleted.', 'info')
 
     try {
       await fetch(
         `${API_BASE}/purchases/${purchaseId}?user_id=${encodeURIComponent(userId)}`,
         { method: 'DELETE' }
       )
-      setScreen('dashboard')
-      setSelectedPurchase(null)
-      addToast('Purchase record deleted.', 'info')
       loadPurchases()
       loadAlerts()
     } catch {

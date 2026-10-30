@@ -219,7 +219,7 @@ export default function AlertsView({
                         </div>
                         <div>
                           <h4 className="text-sm font-semibold text-fg">
-                            {fmt(alert.product_name, 'Unnamed Product')}
+                            {fmt(alert.product_name, '')}
                           </h4>
                           <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-subtle">
                             <span className="font-medium text-muted">{fmt(alert.retailer || alert.brand)}</span>
@@ -290,7 +290,7 @@ export default function AlertsView({
                       <Icon name={details.icon} size={17} />
                     </div>
                     <div>
-                      <div className="text-sm font-semibold text-fg">{fmt(item.product_name, 'Unnamed Product')}</div>
+                      <div className="text-sm font-semibold text-fg">{fmt(item.product_name, '')}</div>
                       <div className="text-xs text-subtle">
                         {details.name} · Fired {fmtDate(item.fire_date)}
                       </div>

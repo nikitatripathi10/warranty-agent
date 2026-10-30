@@ -216,6 +216,8 @@ def get_upcoming_alerts(db: Session, user_id, days_ahead: int = 30) -> list[dict
 
     result = []
     for alert, purchase in alerts:
+        if not purchase.product_name or not (purchase.retailer or purchase.brand):
+            continue
         days_until = (alert.fire_date.date() - date.today()).days
         result.append({
             "alert_id": str(alert.id),
