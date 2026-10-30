@@ -45,7 +45,7 @@ export function GlassCard({
   className,
   style,
   beam = false,
-  beamColors = ['#6d72c9', '#4f8fa8'],
+  beamColors = ['#6366f1', '#38bdf8'],
   spotlight = 'var(--c-spot)',
   intensity = 0.06,
   size = 260,
@@ -93,13 +93,13 @@ const buttonSizes = {
 }
 const buttonVariants = {
   primary:
-    'text-fg border border-violet-glow/45 bg-violet-glow/25 hover:bg-violet-glow/35 shadow-sm',
-  secondary: 'text-fg glass hover:bg-glass-hover hover:border-line-strong',
+    'text-white font-semibold border border-indigo-400/40 bg-linear-to-r from-indigo-500 to-violet-600 hover:from-indigo-400 hover:to-violet-500 shadow-[0_8px_24px_-6px_rgba(99,102,241,0.55)]',
+  secondary: 'text-fg font-semibold glass hover:bg-glass-hover hover:border-line-strong',
   ghost: 'text-muted hover:text-fg hover:bg-glass-hover',
   danger:
     'text-rose-300 light:text-rose-700 bg-rose-500/10 border border-rose-400/25 hover:bg-rose-500/20 hover:border-rose-400/50',
   accent:
-    'text-fg border border-cyan-glow/45 bg-cyan-glow/20 hover:bg-cyan-glow/30 shadow-sm',
+    'text-white font-semibold border border-sky-300/40 bg-linear-to-r from-sky-400 to-blue-500 hover:from-sky-300 hover:to-blue-400 shadow-[0_8px_24px_-6px_rgba(56,189,248,0.5)]',
 }
 
 export const Button = forwardRef(function Button(
@@ -160,10 +160,15 @@ export function Chip({ tone = 'neutral', children, className, dot }) {
   )
 }
 
-export function ConfidenceBadge({ confidence }) {
+export function ConfidenceBadge({ confidence, suffix = '' }) {
   const labels = { high: 'High', medium: 'Moderate', low: 'Low' }
   const tone = { high: 'safe', medium: 'warning', low: 'critical' }[confidence] || 'neutral'
-  return <Chip tone={tone}>{labels[confidence] || confidence}</Chip>
+  const baseLabel = labels[confidence] || confidence || 'Low'
+  return (
+    <Chip tone={tone} className="font-bold tracking-wider uppercase">
+      {baseLabel}{suffix}
+    </Chip>
+  )
 }
 
 export function UrgencyChip({ days, label }) {

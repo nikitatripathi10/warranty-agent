@@ -191,7 +191,16 @@ export default function DashboardView({
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2.5">
+          <Button
+            variant="secondary"
+            size="md"
+            onClick={() => onNavigate('connect')}
+          >
+            <Icon name="sparkles" size={16} />
+            <span>Workspace</span>
+          </Button>
+
           <Button
             variant="secondary"
             size="md"

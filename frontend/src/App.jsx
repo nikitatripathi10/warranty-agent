@@ -13,7 +13,10 @@ import AlertsView from './views/AlertsView'
 import UploadView from './views/UploadView'
 import LookupView from './views/LookupView'
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+const API_BASE =
+  import.meta.env.VITE_API_URL ||
+  import.meta.env.VITE_API_BASE_URL ||
+  'http://localhost:8000'
 
 export default function App() {
   // ── Auth state ──────────────────────────────────────────────────────────────
@@ -398,11 +401,31 @@ export default function App() {
           <main className="flex-1">
             <LandingView
               apiBase={API_BASE}
+              isConnected={false}
+              userEmail=""
+              onDisconnect={handleDisconnect}
               onboardStep={onboardStep}
               activePalette={activePalette}
+              fetchLoading={fetchLoading}
+              fetchResult={fetchResult}
+              fetchError={fetchError}
+              onScanInbox={handleFetchEmails}
+              uploadFile={uploadFile}
+              setUploadFile={setUploadFile}
+              uploadLoading={uploadLoading}
+              uploadProgress={uploadProgress}
+              uploadResult={uploadResult}
+              uploadError={uploadError}
+              onUpload={handleUpload}
+              testText={testText}
+              setTestText={setTestText}
+              testLoading={testLoading}
+              testResult={testResult}
+              testError={testError}
+              onTestExtraction={handleExtractionTest}
             />
           </main>
-          <Footer className="px-6" />
+          <Footer className="px-4" />
         </div>
       )}
 
@@ -440,6 +463,37 @@ export default function App() {
           {/* Main Content Area */}
           <main className="min-h-screen p-4 pb-28 sm:p-6 lg:pl-[19rem] lg:pr-8 lg:pt-8 lg:pb-12">
             <div className="mx-auto max-w-6xl">
+              {screen === 'connect' && (
+                <LandingView
+                  apiBase={API_BASE}
+                  isConnected={isConnected}
+                  userEmail={userEmail}
+                  onDisconnect={handleDisconnect}
+                  onNavigate={setScreen}
+                  onboardStep={onboardStep}
+                  activePalette={activePalette}
+                  fetchLoading={fetchLoading}
+                  fetchResult={fetchResult}
+                  fetchError={fetchError}
+                  onScanInbox={handleFetchEmails}
+                  uploadFile={uploadFile}
+                  setUploadFile={setUploadFile}
+                  uploadLoading={uploadLoading}
+                  uploadProgress={uploadProgress}
+                  uploadResult={uploadResult}
+                  uploadError={uploadError}
+                  onUpload={handleUpload}
+                  testText={testText}
+                  setTestText={setTestText}
+                  testLoading={testLoading}
+                  testResult={testResult}
+                  testError={testError}
+                  onTestExtraction={handleExtractionTest}
+                  purchasesCount={purchases.length}
+                  alertsCount={alerts.length}
+                />
+              )}
+
               {screen === 'dashboard' && (
                 <DashboardView
                   userEmail={userEmail}

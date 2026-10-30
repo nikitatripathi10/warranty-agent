@@ -26,36 +26,41 @@ export default function ResultGrid({ result, ocrUsed }) {
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4 }}
+      transition={{ duration: 0.35 }}
       className="space-y-4"
     >
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3.5 sm:grid-cols-2">
         {items.map(item => (
-          <div key={item.label} className="glass rounded-xl p-3">
+          <div key={item.label} className="glass rounded-xl p-4">
             <div className="text-[0.68rem] font-semibold uppercase tracking-wider text-subtle">
               {item.label}
             </div>
-            <div className={`mt-1 text-sm font-semibold truncate ${item.highlight ? 'text-cyan-glow text-base' : 'text-fg'}`}>
+            <div
+              className={`mt-1.5 text-sm font-semibold break-words whitespace-pre-line ${
+                item.highlight ? 'text-cyan-glow font-bold' : 'text-fg'
+              }`}
+            >
               {item.value}
             </div>
           </div>
         ))}
 
-        <div className="glass rounded-xl p-3">
-          <div className="text-[0.68rem] font-semibold uppercase tracking-wider text-subtle">Accuracy</div>
-          <div className="mt-1">
-            <ConfidenceBadge confidence={result.confidence || 'low'} />
+        <div className="glass rounded-xl p-4">
+          <div className="text-[0.68rem] font-semibold uppercase tracking-wider text-subtle">
+            Accuracy
+          </div>
+          <div className="mt-1.5">
+            <ConfidenceBadge confidence={result.confidence || 'low'} suffix=" Accuracy" />
           </div>
         </div>
       </div>
 
       {ocrUsed && (
-        <div className="glass flex items-center gap-2 rounded-xl px-4 py-2 text-xs text-muted">
+        <div className="glass flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs text-muted">
           <Icon name="file" size={15} className="text-cyan-glow" />
-          <span>Document parsed using optical character recognition (OCR) intelligence.</span>
+          <span>Text read from scanned image using optical character recognition (OCR).</span>
         </div>
       )}
     </motion.div>
   )
 }
-

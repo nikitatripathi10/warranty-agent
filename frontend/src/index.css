@@ -11,38 +11,38 @@
 :root,
 [data-theme="dark"] {
   color-scheme: dark;
-  --c-bg: #070812;
-  --c-bg-2: #0d0f1d;
-  --c-fg: #e2e5f5;
-  --c-muted: #939bc0;
-  --c-subtle: #666e94;
-  --c-glass: rgba(255, 255, 255, 0.035);
-  --c-glass-strong: rgba(14, 16, 32, 0.78);
-  --c-glass-hover: rgba(255, 255, 255, 0.065);
-  --c-border: rgba(255, 255, 255, 0.085);
-  --c-border-strong: rgba(255, 255, 255, 0.15);
-  --c-input: rgba(255, 255, 255, 0.04);
-  --c-shadow: 0 20px 50px -28px rgba(0, 0, 0, 0.75);
-  --c-spot: #6e79c9;
-  --c-grid: rgba(255, 255, 255, 0.03);
+  --c-bg: #050711;
+  --c-bg-2: #0b0f22;
+  --c-fg: #ffffff;
+  --c-muted: #cbd5e1;
+  --c-subtle: #94a3b8;
+  --c-glass: rgba(13, 18, 38, 0.82);
+  --c-glass-strong: rgba(10, 14, 30, 0.92);
+  --c-glass-hover: rgba(24, 32, 64, 0.88);
+  --c-border: rgba(255, 255, 255, 0.11);
+  --c-border-strong: rgba(129, 140, 248, 0.35);
+  --c-input: rgba(9, 13, 28, 0.9);
+  --c-shadow: 0 24px 60px -24px rgba(0, 0, 0, 0.85);
+  --c-spot: #6366f1;
+  --c-grid: rgba(99, 102, 241, 0.055);
 }
 
 [data-theme="light"] {
   color-scheme: light;
-  --c-bg: #f5f6fb;
-  --c-bg-2: #eceef7;
-  --c-fg: #181a2e;
-  --c-muted: #4c5278;
-  --c-subtle: #72789e;
-  --c-glass: rgba(255, 255, 255, 0.65);
-  --c-glass-strong: rgba(255, 255, 255, 0.88);
-  --c-glass-hover: rgba(255, 255, 255, 0.92);
-  --c-border: rgba(70, 74, 130, 0.14);
-  --c-border-strong: rgba(70, 74, 130, 0.25);
-  --c-input: rgba(255, 255, 255, 0.82);
-  --c-shadow: 0 20px 45px -28px rgba(50, 54, 110, 0.25);
-  --c-spot: #5c64b8;
-  --c-grid: rgba(60, 56, 140, 0.05);
+  --c-bg: #f4f6ff;
+  --c-bg-2: #e9edff;
+  --c-fg: #0f172a;
+  --c-muted: #334155;
+  --c-subtle: #64748b;
+  --c-glass: rgba(255, 255, 255, 0.82);
+  --c-glass-strong: rgba(255, 255, 255, 0.94);
+  --c-glass-hover: rgba(255, 255, 255, 0.98);
+  --c-border: rgba(79, 70, 229, 0.16);
+  --c-border-strong: rgba(79, 70, 229, 0.32);
+  --c-input: rgba(255, 255, 255, 0.92);
+  --c-shadow: 0 20px 45px -24px rgba(49, 46, 129, 0.22);
+  --c-spot: #4f46e5;
+  --c-grid: rgba(79, 70, 229, 0.06);
 }
 
 @theme inline {
@@ -64,12 +64,12 @@
   --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-display: "Space Grotesk", "Inter", ui-sans-serif, system-ui, sans-serif;
 
-  --color-violet-glow: #7c6ee6;
-  --color-electric: #4b70e2;
-  --color-cyan-glow: #38b2c7;
-  --color-ok: #34b888;
-  --color-warn: #d9a438;
-  --color-crit: #e06377;
+  --color-violet-glow: #6366f1;
+  --color-electric: #3b82f6;
+  --color-cyan-glow: #38bdf8;
+  --color-ok: #34d399;
+  --color-warn: #fbbf24;
+  --color-crit: #fb7185;
 
   /* Magic UI */
   --animate-shimmer-slide: shimmer-slide var(--speed) ease-in-out infinite alternate;

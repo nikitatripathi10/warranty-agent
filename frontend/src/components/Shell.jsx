@@ -10,13 +10,13 @@ export function Logo({ compact = false, onClick }) {
       onClick={onClick}
       className={cn('flex items-center gap-3', onClick && 'cursor-pointer hover:opacity-90 transition')}
     >
-      <div className="relative grid size-10 place-items-center overflow-hidden rounded-xl border border-violet-glow/35 bg-violet-glow/20 text-violet-200 shadow-sm">
-        <Icon name="shieldCheck" size={20} className="relative" strokeWidth={2} />
+      <div className="relative grid size-10 place-items-center overflow-hidden rounded-xl bg-linear-to-br from-indigo-500 to-sky-400 text-white shadow-[0_6px_20px_-4px_rgba(99,102,241,0.65)]">
+        <Icon name="shieldCheck" size={20} className="relative" strokeWidth={2.2} />
       </div>
       {!compact && (
         <div className="leading-tight">
-          <div className="font-display text-[1.05rem] font-bold tracking-tight">Warranty Radar</div>
-          <div className="text-[0.62rem] font-medium tracking-[0.18em] text-subtle uppercase">Purchase &amp; warranty tracker</div>
+          <div className="font-display text-[1.08rem] font-bold tracking-tight text-aurora">Warranty Radar</div>
+          <div className="text-[0.62rem] font-semibold tracking-[0.16em] text-subtle uppercase">Purchase &amp; warranty tracker</div>
         </div>
       )}
     </div>
@@ -76,10 +76,11 @@ export function TopNav({ healthStatus, theme, onToggleTheme, activePalette, onSe
 }
 
 export const NAV = [
+  { id: 'connect', label: 'Workspace (All-in-One)', icon: 'sparkles' },
   { id: 'dashboard', label: 'Dashboard', icon: 'dashboard' },
   { id: 'alerts', label: 'Alerts & Recalls', icon: 'bell' },
-  { id: 'upload', label: 'Upload Documents', icon: 'upload' },
-  { id: 'lookup', label: 'Extractor & Assistant', icon: 'search' },
+  { id: 'upload', label: 'Upload Document', icon: 'upload' },
+  { id: 'lookup', label: 'Quick Lookup & AI', icon: 'search' },
 ]
 
 const isActive = (screen, id) => screen === id || (screen === 'detail' && id === 'dashboard')
@@ -203,16 +204,17 @@ export function MobileTopBar({
 
 export function MobileTabBar({ screen, onNavigate, alertCount }) {
   const mobileNav = [
+    { id: 'connect', label: 'Workspace', icon: 'sparkles' },
     { id: 'dashboard', label: 'Dashboard', icon: 'dashboard' },
     { id: 'alerts', label: 'Alerts', icon: 'bell' },
     { id: 'upload', label: 'Upload', icon: 'upload' },
-    { id: 'lookup', label: 'Assistant', icon: 'search' },
+    { id: 'lookup', label: 'Lookup', icon: 'search' },
   ]
 
   return (
     <nav
       aria-label="Main navigation"
-      className="glass-strong fixed inset-x-3 bottom-3 z-40 grid grid-cols-4 rounded-2xl p-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))] lg:hidden"
+      className="glass-strong fixed inset-x-3 bottom-3 z-40 grid grid-cols-5 rounded-2xl p-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))] lg:hidden"
     >
       {mobileNav.map(item => {
         const active = isActive(screen, item.id)
@@ -246,13 +248,18 @@ export function MobileTabBar({ screen, onNavigate, alertCount }) {
 
 export function Footer({ className }) {
   return (
-    <footer className={cn('mt-16 border-t border-line py-6 text-xs text-subtle', className)}>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2 font-medium text-muted">
-          <Icon name="shieldCheck" size={15} className="text-violet-300 light:text-violet-700" />
-          <span>Warranty Radar</span>
+    <footer className={cn('mx-auto mt-12 w-full max-w-2xl pb-8 text-xs text-subtle', className)}>
+      <div className="glass rounded-2xl px-6 py-4 space-y-1.5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2 font-semibold text-fg">
+            <span className="text-sm">🛡️</span>
+            <span>Warranty Radar</span>
+          </div>
+          <div className="text-muted">Protecting your purchases across 10+ Indian retailers</div>
         </div>
-        <div>Built by Nikita Tripathi</div>
+        <div className="text-[0.72rem] text-subtle">
+          © {new Date().getFullYear()} Warranty Radar. All rights reserved.
+        </div>
       </div>
     </footer>
   )

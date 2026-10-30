@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
 import { motion } from 'motion/react'
-import { GlassCard, Button, Spinner } from '../components/ui'
+import { GlassCard, Button, Spinner, Notice } from '../components/ui'
 import ResultGrid from '../components/ResultGrid'
 import Icon from '../components/Icon'
 
@@ -91,39 +91,35 @@ export default function UploadView({
         )}
 
         {/* Action Button */}
-        <div className="mt-6 flex justify-end">
+        <div className="mt-6">
           <Button
             id="btn-upload"
-            variant="primary"
-            size="md"
+            variant="accent"
+            size="lg"
+            full
             onClick={onUpload}
             disabled={!uploadFile || uploadLoading}
           >
             {uploadLoading ? (
               <>
                 <Spinner size={16} />
-                <span>Processing Document…</span>
+                <span>Analysing document…</span>
               </>
             ) : (
-              <>
-                <Icon name="sparkles" size={16} />
-                <span>Analyse &amp; Save Record</span>
-              </>
+              <span>Analyse &amp; Save</span>
             )}
           </Button>
         </div>
 
         {uploadError && (
-          <div className="mt-4 rounded-xl border border-rose-400/30 bg-rose-400/10 p-3 text-xs text-rose-200">
+          <Notice tone="error" className="mt-4">
             {uploadError}
-          </div>
+          </Notice>
         )}
 
         {uploadResult && (
-          <div className="mt-6 border-t border-line pt-6">
-            <div className="mb-3 text-xs font-semibold uppercase tracking-wider text-emerald-400">
-              ✓ Successfully Extracted &amp; Saved
-            </div>
+          <div className="mt-6 space-y-4">
+            <Notice tone="success">Purchase record saved successfully.</Notice>
             <ResultGrid result={uploadResult.extraction} ocrUsed={uploadResult.ocr_used} />
           </div>
         )}
