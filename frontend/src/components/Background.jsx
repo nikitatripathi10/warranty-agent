@@ -31,12 +31,12 @@ function Background({ theme = 'dark', paletteId = 'cyberpunk' }) {
         style={{
           background: light
             ? 'radial-gradient(120% 80% at 50% -10%, #fdf2f8 0%, #f3f4ff 55%, #eef2ff 100%)'
-            : 'radial-gradient(120% 80% at 50% -10%, #170420 0%, #080718 50%, #03040b 100%)',
+            : 'radial-gradient(120% 80% at 50% -10%, #12142a 0%, #0a0c18 55%, #06070f 100%)',
         }}
       />
 
       {/* Dynamic Fluid Plasma Blobs in vibrant new colors */}
-      <div className={`absolute inset-0 ${light ? 'opacity-35' : 'opacity-75'} transition-opacity duration-700`}>
+      <div className={`absolute inset-0 ${light ? 'opacity-25' : 'opacity-40'} transition-opacity duration-700`}>
         <div
           className="animate-blob absolute -top-36 -left-28 h-[48vmax] w-[48vmax] rounded-full blur-[115px] transition-colors duration-1000"
           style={{ backgroundColor: palette.blob1 }}
@@ -68,14 +68,14 @@ function Background({ theme = 'dark', paletteId = 'cyberpunk' }) {
               ? [palette.primary, palette.secondary, palette.tertiary]
               : palette.auroraStops
           }
-          amplitude={1.35}
-          blend={0.65}
-          speed={0.9}
+          amplitude={1.0}
+          blend={0.8}
+          speed={0.5}
           height={0.52}
-          glow={0.8}
+          glow={0.25}
           layers={mobile ? 2 : 3}
-          brightness={light ? 0.95 : 1.2}
-          opacity={light ? 0.75 : 0.92}
+          brightness={light ? 0.7 : 0.5}
+          opacity={light ? 0.5 : 0.45}
           lightMode={light}
           dpr={1}
         />
@@ -83,7 +83,7 @@ function Background({ theme = 'dark', paletteId = 'cyberpunk' }) {
 
       {/* Futuristic Cyber Grid with radial vignette mask */}
       <div
-        className="grid-bg absolute inset-0 opacity-60"
+        className="grid-bg absolute inset-0 opacity-30"
         style={{
           WebkitMaskImage: 'radial-gradient(ellipse 75% 65% at 50% 35%, #000 20%, transparent 75%)',
           maskImage: 'radial-gradient(ellipse 75% 65% at 50% 35%, #000 20%, transparent 75%)',
@@ -91,32 +91,31 @@ function Background({ theme = 'dark', paletteId = 'cyberpunk' }) {
       />
 
       {/* Aceternity Background Beams */}
-      {!light && <BackgroundBeams className="opacity-55" />}
+      {!light && <BackgroundBeams className="opacity-15" />}
 
       {/* Interactive Particle Mesh with Repel & Click Bursts */}
       <div className="absolute inset-0">
         <Particles
           key={`particles-${paletteId}-${theme}`}
-          particleCount={mobile ? 60 : 160}
+          particleCount={mobile ? 30 : 70}
           particleSpread={11}
-          speed={0.14}
+          speed={0.08}
           particleColors={palette.particleColors}
           moveParticlesOnHover
           hoverEffect="repel"
           hoverRadius={180}
           particleHoverFactor={1.5}
-          particleBaseSize={mobile ? 70 : 95}
+          particleBaseSize={mobile ? 60 : 70}
           sizeRandomness={1.3}
           connections={!mobile}
           connectionDistance={130}
-          clickBurst
-          drift="up"
+                    drift="up"
           driftSpeed={0.7}
-          glow={0.8}
-          twinkle={0.55}
+          glow={0.15}
+          twinkle={0.2}
           disableRotation={false}
           lightMode={light}
-          opacity={light ? 0.8 : 1}
+          opacity={light ? 0.5 : 0.55}
           alphaParticles={false}
         />
       </div>
@@ -127,7 +126,7 @@ function Background({ theme = 'dark', paletteId = 'cyberpunk' }) {
         style={{
           background: light
             ? 'radial-gradient(ellipse at center, transparent 55%, rgba(243,244,255,0.85) 100%)'
-            : 'radial-gradient(ellipse at center, transparent 50%, rgba(2,3,10,0.78) 100%)',
+            : 'radial-gradient(ellipse at center, transparent 50%, rgba(2,3,8,0.85) 100%)',
         }}
       />
     </div>

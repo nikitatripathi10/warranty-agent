@@ -10,14 +10,13 @@ export function Logo({ compact = false, onClick }) {
       onClick={onClick}
       className={cn('flex items-center gap-3', onClick && 'cursor-pointer hover:opacity-90 transition')}
     >
-      <div className="relative grid size-10 place-items-center overflow-hidden rounded-xl bg-linear-to-br from-violet-glow via-electric to-cyan-glow text-white shadow-[0_0_28px_rgba(99,102,241,0.7)]">
-        <span className="animate-radar absolute inset-0 bg-[conic-gradient(from_0deg,transparent_0deg,rgba(255,255,255,0.55)_40deg,transparent_70deg)]" />
+      <div className="relative grid size-10 place-items-center overflow-hidden rounded-xl border border-violet-glow/35 bg-violet-glow/20 text-violet-200 shadow-sm">
         <Icon name="shieldCheck" size={20} className="relative" strokeWidth={2} />
       </div>
       {!compact && (
         <div className="leading-tight">
           <div className="font-display text-[1.05rem] font-bold tracking-tight">Warranty Radar</div>
-          <div className="text-[0.62rem] font-medium tracking-[0.18em] text-subtle uppercase">Nikita Tripathi · MITS-DU</div>
+          <div className="text-[0.62rem] font-medium tracking-[0.18em] text-subtle uppercase">Purchase &amp; warranty tracker</div>
         </div>
       )}
     </div>
@@ -45,73 +44,25 @@ export function ThemeToggle({ theme, onToggle, className }) {
   )
 }
 
-/* ── Top navbar ───────────────────────────────────────────────────────────── */
-export function TopNav({
-  healthStatus,
-  theme,
-  onToggleTheme,
-  activePalette,
-  onSelectPalette,
-  onOpenDashboard,
-  onNavigate,
-  currentScreen = 'landing',
-}) {
-  const navItems = [
-    { id: 'landing', label: 'Overview', icon: 'sparkles' },
-    { id: 'dashboard', label: 'Dashboard', icon: 'dashboard' },
-    { id: 'alerts', label: 'Alerts', icon: 'bell', badge: '2' },
-    { id: 'upload', label: 'OCR Ingest', icon: 'upload' },
-    { id: 'lookup', label: 'AI Copilot', icon: 'bot' },
-    { id: 'validation', label: 'Validation', icon: 'check', badge: '94.6%' },
-    { id: 'dossier', label: 'MITS Dossier', icon: 'file' },
-  ]
-
+/* ── Top navbar (signed-out) ──────────────────────────────────────────────── */
+export function TopNav({ healthStatus, theme, onToggleTheme, activePalette, onSelectPalette, onConnect }) {
   return (
     <motion.header
-      initial={{ y: -40, opacity: 0 }}
+      initial={{ y: -30, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
-      transition={{ type: 'spring', stiffness: 160, damping: 20 }}
-      className="sticky top-3 z-40 mx-auto mt-3 flex w-[min(96%,76rem)] items-center justify-between rounded-2xl glass-strong px-4 py-2.5 sm:px-5"
+      transition={{ type: 'spring', stiffness: 160, damping: 22 }}
+      className="sticky top-3 z-40 mx-auto mt-3 flex w-[min(96%,72rem)] items-center justify-between rounded-2xl glass-strong px-4 py-2.5 sm:px-5"
     >
-      <Logo onClick={onOpenDashboard} />
-
-      {/* Segregated Quick-Jump Navigation Links */}
-      {onNavigate && (
-        <nav className="hidden xl:flex items-center gap-1" aria-label="Quick jump">
-          {navItems.map(item => {
-            const active = currentScreen === item.id
-            return (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => onNavigate(item.id)}
-                className={cn(
-                  'relative flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-xs font-semibold transition-all',
-                  active ? 'text-fg bg-white/10 shadow-sm' : 'text-subtle hover:text-fg hover:bg-white/5'
-                )}
-              >
-                <Icon name={item.icon} size={13} />
-                <span>{item.label}</span>
-                {item.badge && (
-                  <span className="rounded-full bg-violet-500/20 px-1.5 py-0.2 text-[0.6rem] font-bold text-violet-300">
-                    {item.badge}
-                  </span>
-                )}
-              </button>
-            )
-          })}
-        </nav>
-      )}
-
+      <Logo />
       <div className="flex items-center gap-2.5">
-        {onOpenDashboard && (
+        {onConnect && (
           <button
             type="button"
-            onClick={onOpenDashboard}
-            className="flex items-center gap-2 rounded-xl bg-linear-to-r from-violet-600 to-cyan-500 px-3.5 py-1.5 text-xs font-semibold text-white shadow-md hover:opacity-95 transition"
+            onClick={onConnect}
+            className="flex items-center gap-2 rounded-xl border border-violet-glow/40 bg-violet-glow/20 px-3.5 py-1.5 text-xs font-semibold text-fg transition hover:bg-violet-glow/30"
           >
-            <Icon name="dashboard" size={14} />
-            <span className="hidden sm:inline">Launch Pilot Workspace</span>
+            <Icon name="mail" size={14} />
+            <span className="hidden sm:inline">Connect Gmail</span>
           </button>
         )}
         <StatusBadge status={healthStatus} />
@@ -125,12 +76,10 @@ export function TopNav({
 }
 
 export const NAV = [
-  { id: 'dashboard', label: 'Executive Dashboard', icon: 'dashboard', badge: null },
-  { id: 'alerts', label: 'Alerts & Recalls', icon: 'bell', badge: '2', badgeClass: 'bg-rose-500 text-white' },
-  { id: 'upload', label: 'Document Ingestion (OCR)', icon: 'upload', badge: 'OCR', badgeClass: 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30' },
-  { id: 'lookup', label: 'AI Policy Extractor', icon: 'search', badge: 'NLP', badgeClass: 'bg-violet-500/20 text-violet-300 border border-violet-500/30' },
-  { id: 'validation', label: 'Milestone 4 Benchmarks', icon: 'check', badge: '94.6%', badgeClass: 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' },
-  { id: 'dossier', label: 'MITS Project Dossier', icon: 'file', badge: 'M2–M5', badgeClass: 'bg-amber-500/20 text-amber-300 border border-amber-500/30' },
+  { id: 'dashboard', label: 'Dashboard', icon: 'dashboard' },
+  { id: 'alerts', label: 'Alerts & Recalls', icon: 'bell' },
+  { id: 'upload', label: 'Upload Documents', icon: 'upload' },
+  { id: 'lookup', label: 'Extractor & Assistant', icon: 'search' },
 ]
 
 const isActive = (screen, id) => screen === id || (screen === 'detail' && id === 'dashboard')
@@ -182,38 +131,19 @@ export function Sidebar({
                 <motion.span
                   layoutId="nav-active"
                   transition={spring}
-                  className="absolute inset-0 rounded-xl border border-violet-glow/35 bg-linear-to-r from-violet-glow/25 via-electric/10 to-transparent shadow-[0_0_30px_-8px_rgba(139,92,246,0.7)]"
+                  className="absolute inset-0 rounded-xl border border-violet-glow/30 bg-violet-glow/15"
                 />
               )}
               <Icon name={item.icon} size={17} className={cn('relative transition-colors', active && 'text-violet-300 light:text-violet-700')} />
               <span className="relative flex-1 truncate">{item.label}</span>
-              {item.id === 'alerts' && alertCount > 0 ? (
-                <span className="relative grid min-w-5 place-items-center rounded-full bg-rose-500 px-1.5 text-[0.65rem] font-bold text-white shadow-[0_0_12px_rgba(244,63,94,0.7)]">
+              {item.id === 'alerts' && alertCount > 0 && (
+                <span className="relative grid min-w-5 place-items-center rounded-full bg-rose-500/90 px-1.5 text-[0.65rem] font-bold text-white">
                   {alertCount}
                 </span>
-              ) : item.badge ? (
-                <span className={cn('relative grid place-items-center rounded-full px-1.5 py-0.5 text-[0.62rem] font-bold shadow-sm', item.badgeClass)}>
-                  {item.badge}
-                </span>
-              ) : null}
+              )}
             </motion.button>
           )
         })}
-
-        {/* Link back to Onboarding & Tour */}
-        <div className="pt-2 mt-2 border-t border-line/40">
-          <button
-            type="button"
-            onClick={() => onNavigate('landing')}
-            className={cn(
-              'flex items-center gap-2.5 rounded-xl px-3.5 py-2 text-left text-xs font-medium text-subtle hover:text-fg transition-colors w-full',
-              screen === 'landing' && 'text-fg font-semibold bg-white/5'
-            )}
-          >
-            <Icon name="sparkles" size={15} className="text-cyan-glow" />
-            <span>Onboarding Tour &amp; Specs</span>
-          </button>
-        </div>
       </nav>
 
       <div className="mt-3 flex flex-col gap-2.5 border-t border-line pt-3">
@@ -275,15 +205,14 @@ export function MobileTabBar({ screen, onNavigate, alertCount }) {
   const mobileNav = [
     { id: 'dashboard', label: 'Dashboard', icon: 'dashboard' },
     { id: 'alerts', label: 'Alerts', icon: 'bell' },
-    { id: 'upload', label: 'Ingest', icon: 'upload' },
-    { id: 'validation', label: 'Metrics', icon: 'check' },
-    { id: 'dossier', label: 'MITS', icon: 'file' },
+    { id: 'upload', label: 'Upload', icon: 'upload' },
+    { id: 'lookup', label: 'Assistant', icon: 'search' },
   ]
 
   return (
     <nav
       aria-label="Main navigation"
-      className="glass-strong fixed inset-x-3 bottom-3 z-40 grid grid-cols-5 rounded-2xl p-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))] lg:hidden"
+      className="glass-strong fixed inset-x-3 bottom-3 z-40 grid grid-cols-4 rounded-2xl p-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))] lg:hidden"
     >
       {mobileNav.map(item => {
         const active = isActive(screen, item.id)
@@ -297,7 +226,7 @@ export function MobileTabBar({ screen, onNavigate, alertCount }) {
           >
             {active && (
               <motion.span layoutId="tab-active" transition={spring}
-                className="absolute inset-0 rounded-xl border border-violet-glow/35 bg-violet-glow/20 shadow-[0_0_24px_-6px_rgba(139,92,246,0.8)]" />
+                className="absolute inset-0 rounded-xl border border-violet-glow/30 bg-violet-glow/15" />
             )}
             <span className="relative">
               <Icon name={item.icon} size={18} />
@@ -321,10 +250,9 @@ export function Footer({ className }) {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2 font-medium text-muted">
           <Icon name="shieldCheck" size={15} className="text-violet-300 light:text-violet-700" />
-          <span>Warranty Radar · Submitted by Nikita Tripathi</span>
+          <span>Warranty Radar</span>
         </div>
-        <div>Macro Project | Skills Development Monitoring System, MITS-DU Gwalior</div>
-        <div>Milestones 2, 3, 4 &amp; 5 · Deadline: 30 October 2026</div>
+        <div>Built by Nikita Tripathi</div>
       </div>
     </footer>
   )

@@ -11,38 +11,38 @@
 :root,
 [data-theme="dark"] {
   color-scheme: dark;
-  --c-bg: #05060f;
-  --c-bg-2: #0a0c1f;
-  --c-fg: #eef0ff;
-  --c-muted: #a3acd1;
-  --c-subtle: #7078a0;
-  --c-glass: rgba(255, 255, 255, 0.045);
-  --c-glass-strong: rgba(14, 16, 40, 0.72);
-  --c-glass-hover: rgba(255, 255, 255, 0.08);
-  --c-border: rgba(255, 255, 255, 0.1);
-  --c-border-strong: rgba(255, 255, 255, 0.18);
-  --c-input: rgba(255, 255, 255, 0.05);
-  --c-shadow: 0 24px 60px -28px rgba(0, 0, 0, 0.8);
-  --c-spot: #8b9bff;
-  --c-grid: rgba(255, 255, 255, 0.045);
+  --c-bg: #070812;
+  --c-bg-2: #0d0f1d;
+  --c-fg: #e2e5f5;
+  --c-muted: #939bc0;
+  --c-subtle: #666e94;
+  --c-glass: rgba(255, 255, 255, 0.035);
+  --c-glass-strong: rgba(14, 16, 32, 0.78);
+  --c-glass-hover: rgba(255, 255, 255, 0.065);
+  --c-border: rgba(255, 255, 255, 0.085);
+  --c-border-strong: rgba(255, 255, 255, 0.15);
+  --c-input: rgba(255, 255, 255, 0.04);
+  --c-shadow: 0 20px 50px -28px rgba(0, 0, 0, 0.75);
+  --c-spot: #6e79c9;
+  --c-grid: rgba(255, 255, 255, 0.03);
 }
 
 [data-theme="light"] {
   color-scheme: light;
-  --c-bg: #f3f4ff;
-  --c-bg-2: #e9ebff;
-  --c-fg: #12143a;
-  --c-muted: #474e7d;
-  --c-subtle: #7077a3;
-  --c-glass: rgba(255, 255, 255, 0.62);
-  --c-glass-strong: rgba(255, 255, 255, 0.86);
-  --c-glass-hover: rgba(255, 255, 255, 0.9);
-  --c-border: rgba(76, 70, 160, 0.16);
-  --c-border-strong: rgba(76, 70, 160, 0.3);
-  --c-input: rgba(255, 255, 255, 0.8);
-  --c-shadow: 0 24px 50px -28px rgba(60, 56, 140, 0.35);
-  --c-spot: #6d5dfc;
-  --c-grid: rgba(60, 56, 140, 0.07);
+  --c-bg: #f5f6fb;
+  --c-bg-2: #eceef7;
+  --c-fg: #181a2e;
+  --c-muted: #4c5278;
+  --c-subtle: #72789e;
+  --c-glass: rgba(255, 255, 255, 0.65);
+  --c-glass-strong: rgba(255, 255, 255, 0.88);
+  --c-glass-hover: rgba(255, 255, 255, 0.92);
+  --c-border: rgba(70, 74, 130, 0.14);
+  --c-border-strong: rgba(70, 74, 130, 0.25);
+  --c-input: rgba(255, 255, 255, 0.82);
+  --c-shadow: 0 20px 45px -28px rgba(50, 54, 110, 0.25);
+  --c-spot: #5c64b8;
+  --c-grid: rgba(60, 56, 140, 0.05);
 }
 
 @theme inline {
@@ -57,18 +57,19 @@
   --color-line: var(--c-border);
   --color-line-strong: var(--c-border-strong);
   --color-field: var(--c-input);
+  --color-surface: var(--c-bg-2);
 }
 
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-display: "Space Grotesk", "Inter", ui-sans-serif, system-ui, sans-serif;
 
-  --color-violet-glow: #8b5cf6;
-  --color-electric: #4f7cff;
-  --color-cyan-glow: #22d3ee;
-  --color-ok: #34d399;
-  --color-warn: #fbbf24;
-  --color-crit: #fb7185;
+  --color-violet-glow: #7c6ee6;
+  --color-electric: #4b70e2;
+  --color-cyan-glow: #38b2c7;
+  --color-ok: #34b888;
+  --color-warn: #d9a438;
+  --color-crit: #e06377;
 
   /* Magic UI */
   --animate-shimmer-slide: shimmer-slide var(--speed) ease-in-out infinite alternate;

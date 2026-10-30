@@ -45,10 +45,10 @@ export function GlassCard({
   className,
   style,
   beam = false,
-  beamColors = ['#8b5cf6', '#22d3ee'],
+  beamColors = ['#6d72c9', '#4f8fa8'],
   spotlight = 'var(--c-spot)',
-  intensity = 0.14,
-  size = 280,
+  intensity = 0.06,
+  size = 260,
   interactive = false,
   ...rest
 }) {
@@ -59,10 +59,10 @@ export function GlassCard({
       spotlightColor={spotlight}
       intensity={intensity}
       spotlightSize={size}
-      borderGlow={0.7}
+      borderGlow={0.35}
       className={cn(
         'p-5 sm:p-6 rounded-2xl',
-        interactive && 'cursor-pointer transition-[transform,box-shadow] duration-300 hover:-translate-y-1 active:translate-y-0 active:scale-[0.99] hover:shadow-[0_20px_60px_-20px_rgba(139,92,246,0.45)]',
+        interactive && 'cursor-pointer transition-[transform,box-shadow] duration-300 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.99] hover:shadow-lg',
         className
       )}
       style={{
@@ -93,13 +93,13 @@ const buttonSizes = {
 }
 const buttonVariants = {
   primary:
-    'text-white bg-linear-to-r from-violet-glow via-electric to-cyan-glow bg-[length:200%_100%] hover:bg-[position:100%_0] shadow-[0_8px_30px_-8px_rgba(99,102,241,0.7)] hover:shadow-[0_10px_40px_-6px_rgba(34,211,238,0.55)] transition-[background-position,box-shadow] duration-500',
+    'text-fg border border-violet-glow/45 bg-violet-glow/25 hover:bg-violet-glow/35 shadow-sm',
   secondary: 'text-fg glass hover:bg-glass-hover hover:border-line-strong',
   ghost: 'text-muted hover:text-fg hover:bg-glass-hover',
   danger:
     'text-rose-300 light:text-rose-700 bg-rose-500/10 border border-rose-400/25 hover:bg-rose-500/20 hover:border-rose-400/50',
   accent:
-    'text-white bg-linear-to-r from-cyan-500 to-electric shadow-[0_8px_30px_-8px_rgba(34,211,238,0.6)] hover:shadow-[0_10px_40px_-6px_rgba(34,211,238,0.8)]',
+    'text-fg border border-cyan-glow/45 bg-cyan-glow/20 hover:bg-cyan-glow/30 shadow-sm',
 }
 
 export const Button = forwardRef(function Button(

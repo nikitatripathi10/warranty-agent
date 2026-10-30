@@ -12,134 +12,22 @@ import DetailView from './views/DetailView'
 import AlertsView from './views/AlertsView'
 import UploadView from './views/UploadView'
 import LookupView from './views/LookupView'
-import ValidationView from './views/ValidationView'
-import DossierView from './views/DossierView'
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
-const DEMO_PURCHASES = [
-  {
-    id: 'demo-1',
-    product_name: 'Sony WH-1000XM5 Wireless Noise Cancelling Headphones',
-    brand: 'Sony',
-    retailer: 'Amazon India',
-    purchase_date: '2025-10-10',
-    price: 29990,
-    source_type: 'email',
-    family_member: 'Self',
-    warranty_period: {
-      warranty_end_date: '2026-10-10',
-      return_window_end_date: '2025-10-20',
-      confidence_score: 'high',
-      is_estimated: false,
-      source_snippet: '1-year standard brand warranty from date of purchase. 10-day return window.',
-    },
-  },
-  {
-    id: 'demo-2',
-    product_name: 'Apple MacBook Air M3 (16GB, 512GB SSD) - Starlight',
-    brand: 'Apple',
-    retailer: 'Croma',
-    purchase_date: '2025-11-04',
-    price: 114900,
-    source_type: 'upload',
-    family_member: 'Self',
-    warranty_period: {
-      warranty_end_date: '2026-11-04',
-      return_window_end_date: '2025-11-18',
-      confidence_score: 'high',
-      is_estimated: false,
-      source_snippet: 'Apple 1 Year Limited Warranty with complimentary technical support.',
-    },
-  },
-  {
-    id: 'demo-3',
-    product_name: 'Dyson V12 Detect Slim Cordless Vacuum Cleaner',
-    brand: 'Dyson',
-    retailer: 'Flipkart',
-    purchase_date: '2025-09-15',
-    price: 44900,
-    source_type: 'email',
-    family_member: 'Home',
-    warranty_period: {
-      warranty_end_date: '2027-09-15',
-      return_window_end_date: '2025-09-25',
-      confidence_score: 'high',
-      is_estimated: false,
-      source_snippet: '2-year official manufacturer warranty. Parts and labor included.',
-    },
-  },
-  {
-    id: 'demo-4',
-    product_name: 'Instant Pot Duo 7-in-1 Electric Pressure Cooker 6L',
-    brand: 'Instant Pot',
-    retailer: 'Amazon India',
-    purchase_date: '2026-02-12',
-    price: 8999,
-    source_type: 'email',
-    family_member: 'Kitchen',
-    warranty_period: {
-      warranty_end_date: '2027-02-12',
-      return_window_end_date: '2026-02-22',
-      confidence_score: 'medium',
-      is_estimated: false,
-      source_snippet: 'Manufacturer 1-year limited warranty against manufacturing defects.',
-    },
-  },
-  {
-    id: 'demo-5',
-    product_name: 'Boat Wave Call Smartwatch with Bluetooth Calling',
-    brand: 'boAt',
-    retailer: 'Blinkit',
-    purchase_date: '2026-03-01',
-    price: 1499,
-    source_type: 'email',
-    family_member: 'Sibling',
-    warranty_period: {
-      warranty_end_date: '2027-03-01',
-      return_window_end_date: '2026-03-04',
-      confidence_score: 'medium',
-      is_estimated: true,
-      source_snippet: 'Estimated 1 year standard warranty for personal electronics category.',
-    },
-  },
-]
-
-const DEMO_ALERTS = [
-  {
-    alert_id: 'alt-1',
-    purchase_id: 'demo-1',
-    product_name: 'Sony WH-1000XM5 Wireless Noise Cancelling Headphones',
-    retailer: 'Amazon India',
-    alert_type: 'warranty_expiry',
-    fire_date: '2026-10-10',
-    days_until: 14,
-    is_overdue: false,
-  },
-  {
-    alert_id: 'alt-2',
-    purchase_id: 'demo-5',
-    product_name: 'Boat Wave Call Smartwatch',
-    retailer: 'Blinkit',
-    alert_type: 'return_window_expiry',
-    fire_date: '2026-03-04',
-    days_until: 3,
-    is_overdue: false,
-  },
-]
-
 export default function App() {
   // ── Auth state ──────────────────────────────────────────────────────────────
-  const [userId, setUserId] = useState(() => localStorage.getItem('wrd_user_id') || '')
-  const [userEmail, setUserEmail] = useState(() => {
-    const email = localStorage.getItem('wrd_user_email') || ''
-    if (email.includes('kartik')) {
-      const updated = email.replace('kartik', 'nikita')
-      localStorage.setItem('wrd_user_email', updated)
-      return updated
+  // Drop any leftover sample-workspace session from earlier builds so only real accounts remain.
+  const [userId, setUserId] = useState(() => {
+    const stored = localStorage.getItem('wrd_user_id') || ''
+    if (stored.startsWith('demo-')) {
+      localStorage.removeItem('wrd_user_id')
+      localStorage.removeItem('wrd_user_email')
+      return ''
     }
-    return email
+    return stored
   })
+  const [userEmail, setUserEmail] = useState(() => localStorage.getItem('wrd_user_email') || '')
   const isConnected = Boolean(userId && userEmail)
 
   // ── Theme ───────────────────────────────────────────────────────────────────
@@ -259,10 +147,6 @@ export default function App() {
   // ── API Operations ──────────────────────────────────────────────────────────
   async function loadPurchases() {
     if (!userId) return
-    if (userId.startsWith('demo-')) {
-      setPurchases(DEMO_PURCHASES)
-      return
-    }
     setPurchasesLoading(true)
     setPurchasesError(null)
     try {
@@ -279,10 +163,6 @@ export default function App() {
 
   async function loadAlerts() {
     if (!userId) return
-    if (userId.startsWith('demo-')) {
-      setAlerts(DEMO_ALERTS)
-      return
-    }
     setAlertsLoading(true)
     try {
       const res = await fetch(`${API_BASE}/alerts?user_id=${encodeURIComponent(userId)}&days_ahead=60`)
@@ -300,22 +180,6 @@ export default function App() {
     setFetchLoading(true)
     setFetchResult(null)
     setFetchError(null)
-
-    if (userId.startsWith('demo-')) {
-      setTimeout(() => {
-        setFetchResult({
-          emails_scanned: 18,
-          purchases_created: 5,
-          purchases_failed: 0,
-        })
-        setPurchases(DEMO_PURCHASES)
-        setAlerts(DEMO_ALERTS)
-        addToast('Scanned 18 emails · 5 purchase records saved', 'success')
-        setFetchLoading(false)
-        if (onboardStep === 1) setOnboardStep(2)
-      }, 1200)
-      return
-    }
 
     try {
       const res = await fetch(
@@ -343,48 +207,6 @@ export default function App() {
     setUploadResult(null)
     setUploadError(null)
     setUploadProgress(15)
-
-    if (userId.startsWith('demo-')) {
-      const interval = setInterval(() => setUploadProgress(p => Math.min(p + 20, 90)), 300)
-      setTimeout(() => {
-        clearInterval(interval)
-        setUploadProgress(100)
-        const mockExtraction = {
-          product_name: uploadFile.name.replace(/\.[^/.]+$/, ''),
-          brand: 'Samsung',
-          retailer: 'Reliance Digital',
-          purchase_date: '2026-01-15',
-          price: 18499,
-          warranty_period_months: 12,
-          return_window_days: 7,
-          confidence: 'high',
-        }
-        setUploadResult({ extraction: mockExtraction, ocr_used: true })
-        addToast('Invoice processed and indexed!', 'success')
-        setUploadLoading(false)
-        setPurchases(p => [
-          {
-            id: `upload-${Date.now()}`,
-            product_name: mockExtraction.product_name,
-            brand: mockExtraction.brand,
-            retailer: mockExtraction.retailer,
-            purchase_date: mockExtraction.purchase_date,
-            price: mockExtraction.price,
-            source_type: 'upload',
-            family_member: 'Self',
-            warranty_period: {
-              warranty_end_date: '2027-01-15',
-              return_window_end_date: '2026-01-22',
-              confidence_score: 'high',
-              is_estimated: false,
-              source_snippet: 'Tax Invoice & Customer Warranty Certificate extracted with OCR.',
-            },
-          },
-          ...p,
-        ])
-      }, 1500)
-      return
-    }
 
     const formData = new FormData()
     formData.append('file', uploadFile)
@@ -441,31 +263,6 @@ export default function App() {
     setEditLoading(true)
     setEditError(null)
 
-    if (userId.startsWith('demo-')) {
-      setTimeout(() => {
-        const updated = {
-          ...selectedPurchase,
-          product_name: editForm.product_name,
-          brand: editForm.brand,
-          retailer: editForm.retailer,
-          purchase_date: editForm.purchase_date,
-          price: editForm.price ? parseFloat(editForm.price) : null,
-          family_member: editForm.family_member,
-          warranty_period: {
-            ...selectedPurchase.warranty_period,
-            warranty_end_date: editForm.warranty_end_date,
-            return_window_end_date: editForm.return_window_end_date,
-          },
-        }
-        setSelectedPurchase(updated)
-        setPurchases(ps => ps.map(p => (p.id === updated.id ? updated : p)))
-        setEditMode(false)
-        setEditLoading(false)
-        addToast('Purchase record updated!', 'success')
-      }, 500)
-      return
-    }
-
     const body = {}
     if (editForm.product_name !== undefined) body.product_name = editForm.product_name
     if (editForm.brand !== undefined) body.brand = editForm.brand
@@ -498,14 +295,6 @@ export default function App() {
   async function handleDeletePurchase(purchaseId) {
     if (!confirm('Delete this purchase record? This cannot be undone.')) return
 
-    if (userId.startsWith('demo-')) {
-      setPurchases(ps => ps.filter(p => p.id !== purchaseId))
-      setScreen('dashboard')
-      setSelectedPurchase(null)
-      addToast('Purchase record deleted.', 'info')
-      return
-    }
-
     try {
       await fetch(
         `${API_BASE}/purchases/${purchaseId}?user_id=${encodeURIComponent(userId)}`,
@@ -525,16 +314,6 @@ export default function App() {
     if (!agentQuestion.trim()) return
     setAgentLoading(true)
     setAgentAnswer(null)
-
-    if (userId.startsWith('demo-')) {
-      setTimeout(() => {
-        setAgentAnswer(
-          `Based on your portfolio of ${purchases.length} items, your Sony WH-1000XM5 headphones warranty is expiring in 14 days. Your Boat Wave Call smartwatch return window closes on 4 March 2026. The rest of your electronics have healthy manufacturer coverage lasting well into late 2026 and 2027.`
-        )
-        setAgentLoading(false)
-      }, 700)
-      return
-    }
 
     try {
       const res = await fetch(`${API_BASE}/agent/query`, {
@@ -561,41 +340,13 @@ export default function App() {
     setPurchases([])
     setAlerts([])
     setSelectedPurchase(null)
-    setScreen('landing')
-    addToast('Reset session. You can reload demo or connect Google.', 'info')
+    setScreen('connect')
+    addToast('Signed out. Connect your Google account to continue.', 'info')
   }
 
-  function handleDemoAccess() {
-    const demoId = 'demo-user-1'
-    const demoMail = 'nikita.demo@gmail.com'
-    localStorage.setItem('wrd_user_id', demoId)
-    localStorage.setItem('wrd_user_email', demoMail)
-    setUserId(demoId)
-    setUserEmail(demoMail)
-    setPurchases(DEMO_PURCHASES)
-    setAlerts(DEMO_ALERTS)
-    setScreen('dashboard')
-    addToast('Loaded demo workspace with sample data!', 'success')
+  function handleConnectGmail() {
+    window.location.href = `${API_BASE}/auth/gmail/connect`
   }
-
-  const handleNavigateWithDemo = useCallback((targetScreen) => {
-    if (targetScreen === 'landing') {
-      setScreen('landing')
-      return
-    }
-    if (!userId) {
-      const demoId = 'demo-user-1'
-      const demoMail = 'nikita.demo@gmail.com'
-      localStorage.setItem('wrd_user_id', demoId)
-      localStorage.setItem('wrd_user_email', demoMail)
-      setUserId(demoId)
-      setUserEmail(demoMail)
-      setPurchases(DEMO_PURCHASES)
-      setAlerts(DEMO_ALERTS)
-      addToast("Loaded Nikita Tripathi's pilot workspace!", 'success')
-    }
-    setScreen(targetScreen)
-  }, [userId, addToast])
 
   function openItemDetail(purchase) {
     setSelectedPurchase(purchase)
@@ -642,17 +393,13 @@ export default function App() {
             onToggleTheme={toggleTheme}
             activePalette={activePalette}
             onSelectPalette={handleSelectPalette}
-            onOpenDashboard={handleDemoAccess}
-            onNavigate={handleNavigateWithDemo}
-            currentScreen="landing"
+            onConnect={handleConnectGmail}
           />
           <main className="flex-1">
             <LandingView
               apiBase={API_BASE}
               onboardStep={onboardStep}
-              onDemoAccess={handleDemoAccess}
               activePalette={activePalette}
-              onNavigate={handleNavigateWithDemo}
             />
           </main>
           <Footer className="px-6" />
@@ -750,11 +497,14 @@ export default function App() {
 
               {screen === 'alerts' && (
                 <AlertsView
+                  apiBase={API_BASE}
+                  userId={userId}
                   alerts={alerts}
                   alertsLoading={alertsLoading}
                   onRefresh={loadAlerts}
                   purchases={purchases}
                   onSelectPurchase={openItemDetail}
+                  addToast={addToast}
                 />
               )}
 
@@ -787,24 +537,6 @@ export default function App() {
                 />
               )}
 
-              {screen === 'validation' && (
-                <ValidationView onNavigate={setScreen} />
-              )}
-
-              {screen === 'dossier' && (
-                <DossierView onNavigate={setScreen} />
-              )}
-
-              {screen === 'landing' && (
-                <LandingView
-                  apiBase={API_BASE}
-                  onboardStep={onboardStep}
-                  onDemoAccess={() => setScreen('dashboard')}
-                  activePalette={activePalette}
-                  onNavigate={setScreen}
-                />
-              )}
-
               <Footer />
             </div>
           </main>
@@ -821,13 +553,8 @@ export default function App() {
         </div>
       )}
 
-      {/* Global Floating AI Warranty Assistant */}
-      <FloatingAgentModal
-        purchases={purchases}
-        alerts={alerts}
-        activePalette={activePalette}
-        onNavigate={setScreen}
-      />
+      {/* Floating assistant (signed-in users only; answers come from the backend) */}
+      {isConnected && <FloatingAgentModal apiBase={API_BASE} userId={userId} />}
     </ThemeContext.Provider>
   )
 }
