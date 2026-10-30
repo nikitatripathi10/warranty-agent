@@ -27,6 +27,7 @@ export default function DashboardView({
   onboardStep,
   onFinishOnboarding,
   onOpenDetail,
+  onDeletePurchase,
   onNavigate,
   searchQ,
   setSearchQ,
@@ -659,7 +660,7 @@ export default function DashboardView({
         >
           {filteredPurchases.map(p => (
             <motion.div key={p.id} variants={itemRise}>
-              <PurchaseCard purchase={p} onSelect={onOpenDetail} />
+              <PurchaseCard purchase={p} onSelect={onOpenDetail} onDelete={onDeletePurchase} />
             </motion.div>
           ))}
         </motion.div>
@@ -674,7 +675,7 @@ export default function DashboardView({
         >
           {filteredPurchases.map(p => (
             <motion.div key={p.id} variants={itemRise}>
-              <PurchaseListItem purchase={p} onSelect={onOpenDetail} />
+              <PurchaseListItem purchase={p} onSelect={onOpenDetail} onDelete={onDeletePurchase} />
             </motion.div>
           ))}
         </motion.div>

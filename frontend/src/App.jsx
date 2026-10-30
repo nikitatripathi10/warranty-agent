@@ -511,6 +511,7 @@ export default function App() {
                   onboardStep={onboardStep}
                   onFinishOnboarding={completeOnboarding}
                   onOpenDetail={openItemDetail}
+                  onDeletePurchase={handleDeletePurchase}
                   onNavigate={setScreen}
                   searchQ={searchQ}
                   setSearchQ={setSearchQ}

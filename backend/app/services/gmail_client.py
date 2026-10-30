@@ -1,9 +1,9 @@
 """
-Gmail API client — search and fetch order-confirmation emails.
+Gmail API client — search and fetch order-confirmation and warranty emails.
 
 Design principles:
-- Never stores raw email bodies in the database. Bodies are used transiently
-  during extraction and then discarded.
+- Never stores raw email bodies in the database. Bodies and attachments are used
+  transiently during extraction and then discarded.
 - All API calls are wrapped in try/except with logging; failures are surfaced
   as return values, not exceptions, so the caller can decide how to handle them.
 - gmail_message_id (the short ID from the API) is stored in purchases.source_email_id.
@@ -19,29 +19,38 @@ from googleapiclient.errors import HttpError
 
 logger = logging.getLogger(__name__)
 
-# Narrowed query — matches order/invoice/shipped emails from major Indian retailers
-# Updated to include quick-commerce and fashion platforms (Enhancement 1)
+# Matches:
+# 1. Order / invoice / shipped / warranty emails from major Indian retailers
+# 2. Direct or forwarded purchase confirmations, warranty cards, and tax invoices
 GMAIL_SEARCH_QUERY = (
+    "("
     "from:("
     "amazon.in OR flipkart.com OR myntra.com OR nykaa.com OR meesho.com "
-    "OR ajio.com OR jiomart.com OR blinkit.com OR zeptonow.com OR swiggy.com"
+    "OR ajio.com OR jiomart.com OR blinkit.com OR zeptonow.com OR swiggy.com "
+    "OR croma.com OR reliancedigital.in"
     ") "
-    "subject:(order OR invoice OR shipped OR confirmed OR confirmation OR delivered)"
+    "subject:(order OR invoice OR shipped OR confirmed OR confirmation OR delivered OR warranty OR receipt)"
+    ") OR ("
+    "subject:(\"purchase confirmation\" OR \"order confirmation\" OR \"warranty card\" "
+    "OR \"warranty registration\" OR \"tax invoice\" OR \"order receipt\" "
+    "OR \"invoice for your order\" OR \"warranty details\" OR \"warranty claim\") "
+    "-from:(internshala.com OR unstop.news OR linkedin.com OR vercel.com OR medium.com OR substack.com OR google.com)"
+    ")"
 )
+
+_ALLOWED_ATTACHMENT_MIMES = {
+    "application/pdf",
+    "image/png",
+    "image/jpeg",
+    "image/jpg",
+    "image/webp",
+    "image/tiff",
+}
 
 
 def build_gmail_service(credentials: Credentials):
     """
     Build and return an authenticated Gmail API service object.
-
-    Args:
-        credentials: google.oauth2.credentials.Credentials with a valid access token.
-
-    Returns:
-        googleapiclient Resource object for Gmail v1.
-
-    Raises:
-        RuntimeError: If the service cannot be built.
     """
     try:
         service = build("gmail", "v1", credentials=credentials, cache_discovery=False)
@@ -53,15 +62,7 @@ def build_gmail_service(credentials: Credentials):
 
 def search_order_emails(service, max_results: int = 50) -> list[dict]:
     """
-    Search the user's Gmail inbox for order-confirmation emails.
-
-    Args:
-        service: Authenticated Gmail API service (from build_gmail_service).
-        max_results: Maximum number of message stubs to return (default 50).
-
-    Returns:
-        List of message stubs: [{"id": "<gmail_message_id>", "threadId": "..."}, ...]
-        Returns empty list on error.
+    Search the user's Gmail inbox for order-confirmation and warranty emails.
     """
     try:
         response = (
@@ -83,17 +84,12 @@ def search_order_emails(service, max_results: int = 50) -> list[dict]:
 
 def fetch_message_body(service, message_id: str) -> Optional[str]:
     """
-    Fetch the plain-text (or HTML fallback) body of a Gmail message.
+    Fetch the plain-text (or HTML fallback) body of a Gmail message, prefixed
+    with the Subject header if available so subject-line product names are
+    visible to the extractor.
 
     The raw body is returned as a plain string — it is NOT persisted anywhere.
     Only the message_id is stored long-term.
-
-    Args:
-        service: Authenticated Gmail API service.
-        message_id: Gmail message ID (short form).
-
-    Returns:
-        Decoded email body as a string, or None on failure.
     """
     try:
         message = (
@@ -102,7 +98,9 @@ def fetch_message_body(service, message_id: str) -> Optional[str]:
             .get(userId="me", id=message_id, format="full")
             .execute()
         )
-        return _extract_body_from_payload(message.get("payload", {}))
+        payload = message.get("payload", {})
+        body_text = _extract_body_from_payload(payload) or ""
+        return body_text.strip() or None
     except HttpError as exc:
         logger.error(
             "Failed to fetch Gmail message %s (HTTP %s): %s", message_id, exc.status_code, exc
@@ -111,6 +109,71 @@ def fetch_message_body(service, message_id: str) -> Optional[str]:
     except Exception as exc:
         logger.error("Unexpected error fetching Gmail message %s: %s", message_id, exc)
         return None
+
+
+def fetch_message_attachments(service, message_id: str) -> list[tuple[str, str, bytes]]:
+    """
+    Fetch any supported PDF or image attachments from a Gmail message.
+
+    Returns:
+        List of tuples: [(filename, mime_type, raw_bytes), ...]
+    """
+    try:
+        message = (
+            service.users()
+            .messages()
+            .get(userId="me", id=message_id, format="full")
+            .execute()
+        )
+        payload = message.get("payload", {})
+        attachment_specs: list[tuple[str, str, str]] = []
+        _collect_attachment_specs(payload, attachment_specs)
+
+        results: list[tuple[str, str, bytes]] = []
+        for filename, mime_type, att_id in attachment_specs:
+            try:
+                att = (
+                    service.users()
+                    .messages()
+                    .attachments()
+                    .get(userId="me", messageId=message_id, id=att_id)
+                    .execute()
+                )
+                data_b64 = att.get("data", "")
+                if data_b64:
+                    raw_bytes = base64.urlsafe_b64decode(data_b64 + "==")
+                    results.append((filename, mime_type, raw_bytes))
+            except Exception as exc:
+                logger.warning(
+                    "Failed to download attachment %r from message %s: %s",
+                    filename,
+                    message_id,
+                    exc,
+                )
+        return results
+    except Exception as exc:
+        logger.warning("Could not inspect attachments for message %s: %s", message_id, exc)
+        return []
+
+
+def _collect_attachment_specs(
+    payload: dict, out: list[tuple[str, str, str]]
+) -> None:
+    """Recursively find MIME parts that have an attachmentId and supported MIME type."""
+    mime_type = (payload.get("mimeType") or "").lower()
+    filename = payload.get("filename") or ""
+    body = payload.get("body") or {}
+    att_id = body.get("attachmentId")
+
+    is_supported = (
+        mime_type in _ALLOWED_ATTACHMENT_MIMES
+        or filename.lower().endswith((".pdf", ".png", ".jpg", ".jpeg", ".webp", ".tiff"))
+    )
+    if att_id and is_supported:
+        out.append((filename or "attachment", mime_type, att_id))
+
+    for part in payload.get("parts", []):
+        _collect_attachment_specs(part, out)
 
 
 def _extract_body_from_payload(payload: dict) -> Optional[str]:
@@ -127,10 +190,8 @@ def _extract_body_from_payload(payload: dict) -> Optional[str]:
         return _decode_base64(body_data)
 
     if mime_type == "text/html" and body_data and not parts:
-        # HTML fallback — return as-is; extractor can handle basic HTML
         return _decode_base64(body_data)
 
-    # Multipart — search parts recursively, prefer plain text
     plain_result: Optional[str] = None
     html_result: Optional[str] = None
 
@@ -138,13 +199,16 @@ def _extract_body_from_payload(payload: dict) -> Optional[str]:
         part_mime = part.get("mimeType", "")
         part_data = part.get("body", {}).get("data")
         if part_mime == "text/plain" and part_data:
-            plain_result = _decode_base64(part_data)
+            decoded = _decode_base64(part_data)
+            if decoded.strip():
+                plain_result = decoded
         elif part_mime == "text/html" and part_data:
-            html_result = _decode_base64(part_data)
+            decoded = _decode_base64(part_data)
+            if decoded.strip():
+                html_result = decoded
         elif part.get("parts"):
-            # Nested multipart
             nested = _extract_body_from_payload(part)
-            if nested:
+            if nested and nested.strip():
                 plain_result = plain_result or nested
 
     return plain_result or html_result

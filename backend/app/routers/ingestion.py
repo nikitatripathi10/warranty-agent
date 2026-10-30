@@ -40,6 +40,7 @@ from app.services.extractor_llm import extract_with_llm
 from app.services.extractor_regex import ExtractionResult, run_regex_pass
 from app.services.gmail_client import (
     build_gmail_service,
+    fetch_message_attachments,
     fetch_message_body,
     search_order_emails,
 )
@@ -225,18 +226,34 @@ def fetch_emails(
     for stub in messages:
         msg_id = stub.get("id", "")
         try:
+            existing = (
+                db.query(Purchase)
+                .filter(Purchase.user_id == user.id, Purchase.source_email_id == msg_id)
+                .first()
+            )
+
+            body_parts: list[str] = []
             body = fetch_message_body(gmail_service, msg_id)
-            if not body:
-                logger.warning("Empty body for message %s — skipping", msg_id)
+            if body:
+                body_parts.append(body)
+
+            # Also extract text/OCR from any PDF or image attachments (e.g. warranty cards / invoices)
+            attachments = fetch_message_attachments(gmail_service, msg_id)
+            for att_filename, att_mime, att_bytes in attachments:
+                att_text, _ = extract_text(att_bytes, att_filename, content_type=att_mime)
+                if att_text.strip():
+                    body_parts.append(att_text)
+
+            combined_text = "\n\n".join(body_parts).strip()
+            if not combined_text:
+                logger.warning("Empty body and no readable attachments for message %s — skipping", msg_id)
                 failed += 1
-                errors.append(f"msg:{msg_id} — empty body")
+                errors.append(f"msg:{msg_id} — empty content")
                 continue
 
             # Determine retailer hint from email body (best-effort)
-            # Only hint for retailers with dedicated regex parsers; others fall
-            # through to extract_generic → LLM fallback automatically.
             hint = None
-            body_lower = body.lower()
+            body_lower = combined_text.lower()
             if "amazon" in body_lower:
                 hint = "amazon"
             elif "flipkart" in body_lower:
@@ -246,8 +263,18 @@ def fetch_emails(
             elif "ajio" in body_lower:
                 hint = "ajio"
 
+            result = _run_extraction_pipeline(combined_text, hint=hint)
 
-            result = _run_extraction_pipeline(body, hint=hint)
+            # Guard against persisting records without an identifiable product name
+            if not result.product_name:
+                logger.warning("No product name extracted from email %s — skipping", msg_id)
+                failed += 1
+                errors.append(f"msg:{msg_id} — no product name detected")
+                continue
+
+            if existing:
+                db.delete(existing)
+                db.commit()
 
             _persist_purchase(
                 db,

@@ -3,7 +3,7 @@ import { fmt, fmtDate, fmtPrice, daysUntil, urgencyColor, urgencyLabel } from '.
 import { ConfidenceBadge, UrgencyChip, GlassCard } from './ui'
 import Icon from './Icon'
 
-export default function PurchaseCard({ purchase, onSelect }) {
+export default function PurchaseCard({ purchase, onSelect, onDelete }) {
   const wp = purchase.warranty_period
   const returnDays = wp?.return_window_end_date ? daysUntil(wp.return_window_end_date) : null
   const warrantyDays = wp?.warranty_end_date ? daysUntil(wp.warranty_end_date) : null
@@ -49,7 +49,23 @@ export default function PurchaseCard({ purchase, onSelect }) {
                 {fmt(purchase.retailer || purchase.brand, 'Unknown Retailer')}
               </span>
             </div>
-            <ConfidenceBadge confidence={wp?.confidence_score || 'low'} />
+            <div className="flex items-center gap-1.5">
+              <ConfidenceBadge confidence={wp?.confidence_score || 'low'} />
+              {onDelete && (
+                <button
+                  type="button"
+                  title="Delete purchase record"
+                  aria-label="Delete purchase record"
+                  onClick={e => {
+                    e.stopPropagation()
+                    onDelete(purchase.id)
+                  }}
+                  className="grid size-7 place-items-center rounded-lg border border-transparent text-subtle transition hover:border-rose-400/40 hover:bg-rose-500/15 hover:text-rose-300"
+                >
+                  <Icon name="trash" size={14} />
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Product Title */}
