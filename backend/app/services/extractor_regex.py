@@ -150,11 +150,15 @@ _GEN_PRODUCT_SPACE_COL = re.compile(
     re.IGNORECASE,
 )
 _GEN_MODEL_LABEL = re.compile(
-    r"(?:^|\n)\s*[-•*]?\s*Model\s+(?:Number|No\.?|Name)?\s*[:\-]?\s*([A-Za-z0-9][^\n]{1,50})",
+    r"(?:^|\n)\s*[-•*]?\s*Model\s+(?:Number|No\.?|Name)?\s*[:\-]?\s*([A-Za-z0-9]+(?:-[A-Za-z0-9]+)*(?:\s+\d+[A-Za-z0-9]*)?)",
     re.IGNORECASE,
 )
 _GEN_PRODUCT_PROSE = re.compile(
     r"(?:purchasing\s+your\s+new|Thank\s+you\s+for\s+purchasing|This|Your\s+new)\s+([A-Z][A-Za-z0-9\s\-+()]{3,60}?)(?:\s+comes\s+with|\s+is\s+covered|\s+has\s+been|!|\n)",
+)
+_INVOICE_TABLE_ROW = re.compile(
+    r"(?:Product|Description|Particulars|Title)[^\n]*(?:Qty|Gross\s+Amount|Taxable|Unit\s+Price|Total)[^\n]*\n+\s*(?:\d+\s+)?([A-Za-z][^\n]{3,90}?)(?:\s+\d+\s+[\d,]+\.\d{2}|\s+HSN|\n)",
+    re.IGNORECASE,
 )
 _GEN_BRAND_LABEL = re.compile(
     r"(?:^|\n)\s*[-•*]?\s*(?:Brand|Manufacturer|Make)\s*[:\-]\s*([^\n]+)",
@@ -264,6 +268,8 @@ def _clean(text: Optional[str]) -> Optional[str]:
     """Strip and collapse whitespace; return None for blank strings."""
     if not text:
         return None
+    # Strip multi-column OCR bleed-over (e.g., bullet symbols or wide column gaps)
+    text = re.split(r"\s*[©•|_]+\s*|\s{3,}", text)[0]
     cleaned = re.sub(r"\s+", " ", text.strip()).strip(":-–— ")
     if not cleaned or _INVOICE_NOISE_LINE.match(cleaned):
         return None
@@ -417,6 +423,13 @@ def _extract_generic_product(text: str) -> Optional[str]:
         if m:
             candidate = _clean(m.group(1))
             if candidate and candidate.lower() not in {"product", "item", "order"}:
+                product = candidate
+
+    if not product:
+        m = _INVOICE_TABLE_ROW.search(text)
+        if m:
+            candidate = _clean(m.group(1))
+            if candidate and not _INVOICE_NOISE_LINE.match(candidate):
                 product = candidate
 
     return product

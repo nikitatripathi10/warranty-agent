@@ -16,7 +16,63 @@ import LookupView from './views/LookupView'
 const API_BASE =
   import.meta.env.VITE_API_URL ||
   import.meta.env.VITE_API_BASE_URL ||
-  'http://localhost:8000'
+  (typeof window !== 'undefined' &&
+  window.location.hostname !== 'localhost' &&
+  window.location.hostname !== '127.0.0.1'
+    ? 'https://warranty-agent.onrender.com'
+    : 'http://localhost:8000')
+
+async function prepareFileForUpload(file) {
+  if (!file || !file.type || !file.type.startsWith('image/')) {
+    return file
+  }
+  return new Promise((resolve) => {
+    const img = new Image()
+    const url = URL.createObjectURL(file)
+    img.onload = () => {
+      URL.revokeObjectURL(url)
+      try {
+        const maxDim = 1100
+        let { width, height } = img
+        if (width <= maxDim && height <= maxDim && file.size <= 350 * 1024) {
+          resolve(file)
+          return
+        }
+        if (width > maxDim || height > maxDim) {
+          const scale = maxDim / Math.max(width, height)
+          width = Math.round(width * scale)
+          height = Math.round(height * scale)
+        }
+        const canvas = document.createElement('canvas')
+        canvas.width = width
+        canvas.height = height
+        const ctx = canvas.getContext('2d')
+        ctx.fillStyle = '#FFFFFF'
+        ctx.fillRect(0, 0, width, height)
+        ctx.drawImage(img, 0, 0, width, height)
+        canvas.toBlob(
+          (blob) => {
+            if (!blob) {
+              resolve(file)
+              return
+            }
+            const baseName = file.name.replace(/\.[^.]+$/, '') || 'document'
+            resolve(new File([blob], `${baseName}.jpg`, { type: 'image/jpeg' }))
+          },
+          'image/jpeg',
+          0.85
+        )
+      } catch {
+        resolve(file)
+      }
+    }
+    img.onerror = () => {
+      URL.revokeObjectURL(url)
+      resolve(file)
+    }
+    img.src = url
+  })
+}
 
 export default function App() {
   // ── Auth state ──────────────────────────────────────────────────────────────
@@ -131,9 +187,14 @@ export default function App() {
       setOnboardStep(1)
     }
 
-    fetch(`${API_BASE}/health`, { signal: AbortSignal.timeout(5000) })
-      .then(r => (r.ok ? setHealthStatus('ok') : setHealthStatus('error')))
-      .catch(() => setHealthStatus('error'))
+    const checkHealth = () => {
+      fetch(`${API_BASE}/health`, { signal: AbortSignal.timeout(45000) })
+        .then(r => (r.ok ? setHealthStatus('ok') : setHealthStatus('error')))
+        .catch(() => setHealthStatus('error'))
+    }
+    checkHealth()
+    const keepAlive = setInterval(checkHealth, 240000)
+    return () => clearInterval(keepAlive)
   }, [])
 
   useEffect(() => {
@@ -211,17 +272,65 @@ export default function App() {
     setUploadError(null)
     setUploadProgress(15)
 
-    const formData = new FormData()
-    formData.append('file', uploadFile)
-    formData.append('user_id', userId)
+    const prog = setInterval(() => setUploadProgress(p => Math.min(p + 8, 90)), 700)
 
     try {
-      const prog = setInterval(() => setUploadProgress(p => Math.min(p + 14, 85)), 500)
-      const res = await fetch(`${API_BASE}/ingestion/upload`, {
-        method: 'POST',
-        body: formData,
-        signal: AbortSignal.timeout(60000),
-      })
+      const optimizedFile = await prepareFileForUpload(uploadFile)
+      const prevIds = new Set(purchases.map(p => p.id))
+
+      const sendUpload = async () => {
+        const formData = new FormData()
+        formData.append('file', optimizedFile)
+        formData.append('user_id', userId)
+        return fetch(`${API_BASE}/ingestion/upload`, {
+          method: 'POST',
+          body: formData,
+          signal: AbortSignal.timeout(180000),
+        })
+      }
+
+      let res
+      try {
+        res = await sendUpload()
+      } catch (firstErr) {
+        // Check if backend actually finished saving the record before a proxy timeout
+        try {
+          const checkRes = await fetch(
+            `${API_BASE}/purchases?user_id=${encodeURIComponent(userId)}`,
+            { signal: AbortSignal.timeout(20000) }
+          )
+          if (checkRes.ok) {
+            const checkData = await checkRes.json()
+            const list = checkData.purchases || []
+            const newest = list.find(p => !prevIds.has(p.id) && p.source_type === 'upload')
+            if (newest) {
+              clearInterval(prog)
+              setUploadProgress(100)
+              setPurchases(list)
+              setUploadResult({
+                purchase: newest,
+                extraction: {
+                  product_name: newest.product_name,
+                  brand: newest.brand,
+                  retailer: newest.retailer,
+                  purchase_date: newest.purchase_date,
+                  price: newest.price,
+                  confidence: newest.warranty_period?.confidence_score || 'high',
+                },
+                ocr_used: true,
+              })
+              addToast('Document processed and saved!', 'success')
+              loadAlerts()
+              return
+            }
+          }
+        } catch {
+          /* ignore check error and retry upload */
+        }
+        // Retry once after waking backend
+        res = await sendUpload()
+      }
+
       clearInterval(prog)
       setUploadProgress(100)
       const data = await res.json()
@@ -231,9 +340,15 @@ export default function App() {
       loadPurchases()
       loadAlerts()
     } catch (err) {
-      setUploadError(err.message)
-      addToast(`Upload failed: ${err.message}`, 'error')
+      clearInterval(prog)
+      const msg =
+        err?.name === 'TimeoutError' || /timed out/i.test(err?.message || '')
+          ? 'Server took too long to respond. Please click Analyse & Save once more.'
+          : err.message
+      setUploadError(msg)
+      addToast(`Upload failed: ${msg}`, 'error')
     } finally {
+      clearInterval(prog)
       setUploadLoading(false)
       setTimeout(() => setUploadProgress(0), 1000)
     }
@@ -250,7 +365,7 @@ export default function App() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: testText }),
-        signal: AbortSignal.timeout(45000),
+        signal: AbortSignal.timeout(90000),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.detail || `HTTP ${res.status}`)

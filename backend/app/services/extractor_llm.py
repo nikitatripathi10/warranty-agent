@@ -149,10 +149,9 @@ def extract_with_llm(text: str) -> Optional[ExtractionResult]:
         )
         return None
 
-    if not _GEMINI_API_KEY:
+    if not _GEMINI_API_KEY or not _GEMINI_API_KEY.strip().startswith("AIza"):
         logger.warning(
-            "GEMINI_API_KEY not set — LLM extraction fallback disabled. "
-            "Set the key in .env or Railway Variables to enable it."
+            "Valid GEMINI_API_KEY (starting with 'AIza') not set — LLM extraction fallback skipped."
         )
         return None
 
@@ -177,6 +176,7 @@ def extract_with_llm(text: str) -> Optional[ExtractionResult]:
                 temperature=0.0,
                 max_output_tokens=512,
             ),
+            request_options={"timeout": 8.0},
         )
         raw_content = response.text if response.text else ""
     except Exception as exc:
