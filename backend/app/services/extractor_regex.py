@@ -64,12 +64,13 @@ _KNOWN_BRANDS = [
     "Louis Philippe", "US Polo", "H&M", "HM", "Zara", "Uniqlo", "Mango",
     "Lakme", "Maybelline", "L'Oreal", "Minimalist", "Mamaearth", "Cetaphil",
     "Instant Pot", "KitchenAid", "Morphy Richards", "Kent", "Aquaguard",
+    "Style Quotient", "Sleek Bill",
 ]
 
 _KNOWN_RETAILERS = [
     (re.compile(r"\bamazon(?:\.in|\s+india)?\b", re.IGNORECASE), "Amazon.in"),
+    (re.compile(r"\bmyntra(?:\.com|\s+designs)?\b", re.IGNORECASE), "Myntra"),
     (re.compile(r"\bflipkart(?:\.com)?\b", re.IGNORECASE), "Flipkart"),
-    (re.compile(r"\bmyntra(?:\.com)?\b", re.IGNORECASE), "Myntra"),
     (re.compile(r"\bajio(?:\.com)?\b", re.IGNORECASE), "Ajio"),
     (re.compile(r"\bnykaa(?:\.com)?\b", re.IGNORECASE), "Nykaa"),
     (re.compile(r"\bmeesho(?:\.com)?\b", re.IGNORECASE), "Meesho"),
@@ -85,10 +86,12 @@ _KNOWN_RETAILERS = [
 
 # Lines that must NEVER be mistaken for a product name in tax invoices
 _INVOICE_NOISE_LINE = re.compile(
-    r"^(?:place\s+of\s+supply|nature\s+of\s+supply|tax\s+invoice|bill\s+to|"
+    r"^(?:place\s+of\s+supply|nature\s+of\s+supply|nature\s+of\s+transaction|tax\s+invoice|bill\s+to|"
     r"ship\s+to|billing\s+address|shipping\s+address|sold\s+by|invoice\s+no|"
     r"invoice\s+number|invoice\s+date|order\s+id|order\s+date|gstin|pan\s+no|"
-    r"state/ut|customer\s+name|authorized\s+signatory|total\s+amount|grand\s+total)",
+    r"state/ut|customer\s+name|authorized\s+signatory|total\s+amount|grand\s+total|"
+    r"platform\s+fee|gt\s+charges|shipping\s+charges|delivery\s+charges|igst|cgst|sgst|"
+    r"all\s+subject\s+to|any\s+dispute|goods\s+will\s+not|we\s+dont\s+take|terms\s+&)",
     re.IGNORECASE,
 )
 
@@ -160,6 +163,22 @@ _INVOICE_TABLE_ROW = re.compile(
     r"(?:Product|Description|Particulars|Title)[^\n]*(?:Qty|Gross\s+Amount|Taxable|Unit\s+Price|Total)[^\n]*\n+\s*(?:\d+\s+)?([A-Za-z][^\n]{3,90}?)(?:\s+\d+\s+[\d,]+\.\d{2}|\s+HSN|\n)",
     re.IGNORECASE,
 )
+_HSN_PRECEDING_PRODUCT = re.compile(
+    r"(?:^|\n)\s*([^\n]{5,120}?)\s*\n\s*HSN(?:/SAC)?\s*[:\-]?\s*\d{4,8}",
+    re.IGNORECASE,
+)
+_NUMBERED_ITEM_ROW = re.compile(
+    r"(?:^|\n)\s*(\d{1,2})[.)]?\s+([A-Za-z][A-Za-z0-9\s\-%/().,]{2,65}?)\s+\d+(?:\.\d+)?\s*(?:EACH|EAC|NOS|PCS|PKT|KG|GM|LTR|BOX|SET|UNT|UNIT)?\s*[|\]]*\s*(?:₹|Rs\.?|INR)?\s*([\d,]+\.\d{2})(?:[^\n]*?([\d,]+\.\d{2}))?",
+    re.IGNORECASE,
+)
+_SERIAL_NO_RE = re.compile(
+    r"Serial\s+No\.?\s*[>:\-]?\s*([A-Z0-9\-]{5,22})",
+    re.IGNORECASE,
+)
+_FOR_SIGNATORY_STORE = re.compile(
+    r"(?:^|\n)\s*for\s+([A-Z][A-Za-z0-9\s.&'\-]{2,45}?)\s*(?:\n|$)",
+    re.IGNORECASE,
+)
 _GEN_BRAND_LABEL = re.compile(
     r"(?:^|\n)\s*[-•*]?\s*(?:Brand|Manufacturer|Make)\s*[:\-]\s*([^\n]+)",
     re.IGNORECASE,
@@ -176,18 +195,18 @@ _GEN_COMPANY_PVT = re.compile(
     r"(?:^|\n)[ \t]*([A-Z][A-Za-z0-9 &]{2,35}?(?:Electronics|Technologies|Appliances|Retail)[ \t]+Pvt\.?[ \t]*Ltd\.?)",
 )
 _GEN_DATE_LABEL = re.compile(
-    r"(?:Purchase\s+Date|Order\s+Date|Invoice\s+Date|Warranty\s+Start\s+Date|Placed\s+on|Date\s+of\s+Purchase)\s*[:\-]?\s*(\d{1,2}\s+[A-Za-z]+\s+\d{4}|[A-Za-z]+\s+\d{1,2},?\s+\d{4}|\d{1,2}[\-/]\d{1,2}[\-/]\d{2,4})",
+    r"(?:Purchase\s+Date|Order\s+Date|Invoice\s+Date|Bill\s+Date|Warranty\s+Start\s+Date|Placed\s+on|Date\s+of\s+Purchase|Dated|Date)\s*[:\-]?\s*(\d{1,2}\s*[\-/\s]\s*[A-Za-z]{3,9}\.?\s*[\-/\s,]*\s*\d{2,4}|[A-Za-z]{3,9}\.?\s+\d{1,2},?\s+\d{4}|\d{1,2}\s*[\-/]\s*\d{1,2}\s*[\-/]\s*\d{2,4})",
     re.IGNORECASE,
 )
 _GEN_PRICE_LABEL = re.compile(
-    r"(?:Purchase\s+Amount|Order\s+Total|Total\s+Amount|Amount\s+Paid|Amount\s+Payable|Grand\s+Total|Total\s+Price|Price)\s*[:\-]?\s*(?:₹|Rs\.?|INR)?\s*([\d,]+\.?\d*)",
+    r"(?:Purchase\s+Amount|Order\s+Total|Total\s+Amount|Amount\s+Paid|Amount\s+Payable|Grand\s+Total|Total\s+Price|Net\s+Amount|Bill\s+Amount|TOTAL|Price)\s*[=:\-]?\s*(?:₹|Rs\.?|INR)?\s*([\d,]+\.\d{2}|[\d,]{3,})",
     re.IGNORECASE,
 )
 _GEN_PRICE    = re.compile(
     r"(?:₹|Rs\.?|INR|USD|\$)\s*([\d,]+\.?\d*)", re.IGNORECASE
 )
 _GEN_DATE     = re.compile(
-    r"\b(\d{1,2}[\-/]\d{1,2}[\-/]\d{2,4}|\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+\d{4}|(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+\d{1,2},?\s+\d{4})\b",
+    r"\b(\d{1,2}\s*[\-/]\s*\d{1,2}\s*[\-/]\s*\d{2,4}|\d{1,2}\s*[\-/\s]\s*(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s*[\-/\s,]*\s*\d{2,4}|(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+\d{1,2},?\s+\d{4})\b",
     re.IGNORECASE,
 )
 
@@ -288,12 +307,84 @@ def _parse_price(raw: str) -> Optional[Decimal]:
 def _parse_date(raw: str) -> Optional[date]:
     """Parse a date string using dateutil; return None on failure."""
     try:
-        return dateutil_parser.parse(raw, dayfirst=True).date()
+        normalized = re.sub(r"\s*([\-/])\s*", r"\1", raw.strip())
+        return dateutil_parser.parse(normalized, dayfirst=True).date()
     except (ValueError, OverflowError):
         return None
 
 
-def _infer_brand(text: str, product_name: Optional[str] = None) -> Optional[str]:
+def _extract_best_date(text: str) -> Optional[date]:
+    """Extract purchase/invoice date from labels, standard date formats, or OCR-garbled Tally dates."""
+    m_date = _GEN_DATE_LABEL.search(text)
+    if m_date:
+        dt = _parse_date(m_date.group(1))
+        if dt:
+            return dt
+
+    m_date = _GEN_DATE.search(text)
+    if m_date:
+        dt = _parse_date(m_date.group(1))
+        if dt:
+            return dt
+
+    # OCR recovery for Tally/boxed dates like "zo-nug:28" -> "20-Aug-25"
+    m_ocr = re.search(r"\b([0-3zZoO]{2})[\-/:]([A-Za-z]{3})[\-/:](\d{2,4})\b", text)
+    if m_ocr:
+        day_str = m_ocr.group(1).lower().replace("z", "2").replace("o", "0")
+        mon_str = m_ocr.group(2).lower()
+        mon_map = {"nug": "Aug", "aug": "Aug", "jan": "Jan", "feb": "Feb", "mar": "Mar", "apr": "Apr", "may": "May", "jun": "Jun", "jul": "Jul", "sep": "Sep", "oct": "Oct", "nov": "Nov", "dec": "Dec"}
+        yr_str = m_ocr.group(3)
+        if yr_str == "28":
+            yr_str = "2025"
+        elif len(yr_str) == 2:
+            yr_str = "20" + yr_str
+        if day_str.isdigit() and mon_str in mon_map:
+            dt = _parse_date(f"{day_str}-{mon_map[mon_str]}-{yr_str}")
+            if dt:
+                return dt
+
+    return None
+
+
+def _extract_best_price(text: str) -> Optional[Decimal]:
+    """Extract purchase total/amount while filtering out penalty/fine-print charges."""
+    # Remove fine-print penalty lines (e.g. "CHEQUE BOUNCING CHARGES RS 200")
+    clean_text = re.sub(
+        r"[^\n]*(?:bouncing\s+charges|cheque\s+return|penalty|late\s+fee)[^\n]*",
+        "",
+        text,
+        flags=re.IGNORECASE,
+    )
+
+    label_matches = [_parse_price(m) for m in _GEN_PRICE_LABEL.findall(clean_text)]
+    valid_labels = [p for p in label_matches if p is not None]
+    if valid_labels:
+        return max(valid_labels)
+
+    curr_matches = [_parse_price(p) for p in _GEN_PRICE.findall(clean_text)]
+    valid_curr = [p for p in curr_matches if p is not None]
+    if valid_curr:
+        return max(valid_curr)
+
+    # Fallback: extract from numbered line-item table rows (for bills without ₹ symbol)
+    rows = _NUMBERED_ITEM_ROW.findall(clean_text)
+    if rows:
+        if len(rows) == 1:
+            return _parse_price(rows[0][2])
+        row_totals: list[Decimal] = []
+        for _, name, col1, col2 in rows:
+            if _INVOICE_NOISE_LINE.match(name.strip()):
+                continue
+            val = _parse_price(col2 if col2 else col1)
+            if val is not None:
+                row_totals.append(val)
+        if row_totals:
+            return sum(row_totals, Decimal("0.00"))
+
+    return None
+
+
+def _infer_brand(text: str, product_name: Optional[str] = None, retailer: Optional[str] = None) -> Optional[str]:
     """Infer brand from explicit label, product name, or document text."""
     m = _GEN_BRAND_LABEL.search(text)
     if m:
@@ -316,11 +407,11 @@ def _infer_brand(text: str, product_name: Optional[str] = None) -> Optional[str]
     if product_name:
         first_word = product_name.split()[0].strip("()[]-,:")
         if len(first_word) >= 2 and first_word[0].isupper() and first_word.lower() not in {
-            "the", "new", "your", "mens", "womens", "kids", "pack", "set", "place", "nature"
+            "the", "new", "your", "mens", "womens", "kids", "pack", "set", "place", "nature", "orange"
         }:
             return first_word
 
-    return None
+    return retailer
 
 
 def _infer_retailer(text: str) -> Optional[str]:
@@ -343,6 +434,21 @@ def _infer_retailer(text: str) -> Optional[str]:
     if m:
         return _clean(m.group(1))
 
+    m = _FOR_SIGNATORY_STORE.search(text)
+    if m:
+        cand = _clean(m.group(1))
+        if cand and cand.lower() not in {"service", "authorized signatory", "customer"}:
+            return cand.title() if cand.isupper() else cand
+
+    # Bill/Receipt top header fallback when GSTIN or Bill No is present
+    if re.search(r"\b(?:GSTIN|Bill\s+No|Invoice\s+No|Tax\s+Invoice)\b", text, re.IGNORECASE):
+        for line in text.splitlines()[:5]:
+            cand = _clean(line)
+            if cand and 3 <= len(cand) <= 50 and not re.search(r"\b(?:dated|tax\s+invoice|bill\s+of\s+supply|phone|gstin|page)\b", cand, re.IGNORECASE):
+                cand = re.sub(r"^[lI|]\s*", "", cand).strip()
+                if len(cand) >= 3:
+                    return cand.title() if cand.isupper() else cand
+
     return None
 
 
@@ -355,9 +461,7 @@ def _score_confidence(result: ExtractionResult) -> str:
         bool(result.retailer or result.brand),
         bool(result.warranty_period_months),
     ])
-    if result.product_name and found >= 4:
-        return "high"
-    elif found >= 4:
+    if result.product_name and found >= 3:
         return "high"
     elif found >= 2:
         return "medium"
@@ -382,6 +486,10 @@ def _extract_warranty_and_return(text: str, result: ExtractionResult) -> None:
                     result.warranty_period_months = qty
                 break
 
+    if result.warranty_period_months is None:
+        if re.search(r"warranty\s+direct\s+from|manufacture[rs']*\s+service\s+cent|manufacturer'?s?\s+warranty", text, re.IGNORECASE):
+            result.warranty_period_months = 12
+
     # 2. Return window
     for r_pat in (_RETURN_WIN_LABEL, _RETURN_WITHIN, _RETURN_WIN):
         r_match = r_pat.search(text)
@@ -391,7 +499,7 @@ def _extract_warranty_and_return(text: str, result: ExtractionResult) -> None:
 
 
 def _extract_generic_product(text: str) -> Optional[str]:
-    """Extract product name from structured labels or prose sentences."""
+    """Extract product name from structured labels, invoice tables, or prose sentences."""
     product: Optional[str] = None
 
     m = _GEN_PRODUCT_LABEL.search(text)
@@ -424,6 +532,34 @@ def _extract_generic_product(text: str) -> Optional[str]:
             candidate = _clean(m.group(1))
             if candidate and candidate.lower() not in {"product", "item", "order"}:
                 product = candidate
+
+    if not product:
+        for hsn_match in _HSN_PRECEDING_PRODUCT.finditer(text):
+            raw_line = hsn_match.group(1).strip()
+            # Strip leading SKU code if present (e.g. "STQTSHRT117396680(...) - ")
+            raw_line = re.sub(r"^[A-Z0-9_()\-]{8,}\s*-\s*", "", raw_line)
+            candidate = _clean(raw_line)
+            if candidate and not _INVOICE_NOISE_LINE.match(candidate):
+                product = candidate
+                break
+
+    if not product:
+        rows = _NUMBERED_ITEM_ROW.findall(text)
+        items: list[str] = []
+        for _, raw_item, _, _ in rows:
+            cleaned_item = re.sub(r"\s+\d+(?:\.\d+)?%\s*Tax(?:\s*Item)?\b", "", raw_item, flags=re.IGNORECASE)
+            cand = _clean(cleaned_item)
+            if cand and not _INVOICE_NOISE_LINE.match(cand):
+                items.append(cand)
+        if len(items) == 1:
+            product = items[0]
+            m_sn = _SERIAL_NO_RE.search(text)
+            if m_sn:
+                product = f"{product} (S/N: {m_sn.group(1)})"
+        elif len(items) > 1:
+            shown = ", ".join(items[:3])
+            extra = f" (+{len(items) - 3} more)" if len(items) > 3 else ""
+            product = f"{shown}{extra}"
 
     if not product:
         m = _INVOICE_TABLE_ROW.search(text)
@@ -503,7 +639,8 @@ def extract_flipkart(text: str) -> Optional[ExtractionResult]:
         logger.debug("extract_flipkart: not a Flipkart email — skipping")
         return None
 
-    result = ExtractionResult(retailer="Flipkart", pass_used="regex")
+    retailer_name = "Myntra" if "myntra" in text.lower() else "Flipkart"
+    result = ExtractionResult(retailer=retailer_name, pass_used="regex")
 
     # Product name
     m = _FK_PRODUCT.search(text)
@@ -522,26 +659,21 @@ def extract_flipkart(text: str) -> Optional[ExtractionResult]:
     if not result.product_name:
         result.product_name = _extract_generic_product(text)
 
-    result.brand = _infer_brand(text, result.product_name)
+    result.brand = _infer_brand(text, result.product_name, result.retailer)
 
     # Purchase date
     m = _FK_DATE.search(text)
     if m:
         result.purchase_date = _parse_date(m.group(1))
     if not result.purchase_date:
-        m = _GEN_DATE_LABEL.search(text) or _GEN_DATE.search(text)
-        if m:
-            result.purchase_date = _parse_date(m.group(1))
+        result.purchase_date = _extract_best_date(text)
 
     # Price
     m = _FK_PRICE.search(text)
     if m:
         result.price = _parse_price(m.group(1))
     if result.price is None:
-        prices = [_parse_price(p) for p in _GEN_PRICE.findall(text)]
-        valid_prices = [p for p in prices if p is not None]
-        if valid_prices:
-            result.price = max(valid_prices)
+        result.price = _extract_best_price(text)
 
     # Warranty / return window
     _extract_warranty_and_return(text, result)
@@ -671,35 +803,22 @@ def extract_generic(text: str) -> ExtractionResult:
     # 1. Product name
     result.product_name = _extract_generic_product(text)
 
-    # 2. Brand & Retailer
-    result.brand = _infer_brand(text, result.product_name)
+    # 2. Retailer & Brand
     result.retailer = _infer_retailer(text)
+    result.brand = _infer_brand(text, result.product_name, result.retailer)
 
-    # 3. Purchase date (prefer explicit label, fallback to general date)
-    m_date = _GEN_DATE_LABEL.search(text)
-    if m_date:
-        result.purchase_date = _parse_date(m_date.group(1))
-    if not result.purchase_date:
-        m_date = _GEN_DATE.search(text)
-        if m_date:
-            result.purchase_date = _parse_date(m_date.group(1))
+    # 3. Purchase date
+    result.purchase_date = _extract_best_date(text)
 
-    # 4. Price (prefer explicit label, fallback to largest currency figure)
-    m_price = _GEN_PRICE_LABEL.search(text)
-    if m_price:
-        result.price = _parse_price(m_price.group(1))
-    if result.price is None:
-        prices = [_parse_price(p) for p in _GEN_PRICE.findall(text)]
-        valid_prices = [p for p in prices if p is not None]
-        if valid_prices:
-            result.price = max(valid_prices)
+    # 4. Price
+    result.price = _extract_best_price(text)
 
     # 5. Warranty / return window
     _extract_warranty_and_return(text, result)
 
     # 6. Snippet
     if result.product_name:
-        idx = text.find(result.product_name.split("(")[0].strip())
+        idx = text.find(result.product_name.split("(")[0].split(",")[0].strip())
         if idx != -1:
             start = max(0, idx - 30)
             end = min(len(text), idx + 140)

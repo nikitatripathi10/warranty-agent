@@ -169,6 +169,9 @@ def get_category_fallback(
             if re.search(re.escape(kw), combined, re.IGNORECASE):
                 return (category, warranty_months, return_days)
 
+    if product_name and product_name.strip():
+        return ("General Retail / Merchandise", 6, 7)
+
     return None
 
 

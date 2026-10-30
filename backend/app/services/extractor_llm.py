@@ -1,19 +1,14 @@
 """
-Pass 2 extraction — Google Gemini LLM fallback.
+Pass 2 & Multimodal Vision extraction — Google Gemini API (gemini-3.1-flash-lite / gemini-3.5-flash-lite).
 
-Called when the regex pass returns confidence == 'low'.  We send the cleaned
-email/document text to Gemini with a structured prompt + few-shot examples and
-expect a JSON response matching ExtractionResult fields.
-
-Design principles:
-- Hard timeout on every API call.
-- Malformed JSON responses are caught and logged; we return None rather than crash.
-- The model is instructed explicitly to output confidence='low' rather than guess.
-- Prompt includes few-shot examples to anchor the model's output format.
+Supports both:
+- Multimodal document scanning (sending image/PDF bytes directly to Gemini Vision via inline_data)
+- Text extraction fallback (sending email/OCR text to Gemini)
 """
 
 from __future__ import annotations
 
+import base64
 import json
 import logging
 import os
@@ -21,10 +16,7 @@ from datetime import date
 from decimal import Decimal, InvalidOperation
 from typing import Optional
 
-try:
-    import google.generativeai as genai
-except ImportError:
-    genai = None  # SDK not installed — LLM pass will be skipped gracefully
+import httpx
 from dotenv import load_dotenv
 
 from app.services.extractor_regex import ExtractionResult
@@ -34,14 +26,13 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 
 _GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-_MODEL = "gemini-1.5-flash"  # Fast + cheap — ideal for structured extraction
-
-# ── Prompt templates ──────────────────────────────────────────────────────────
+_MODELS = ["gemini-3.1-flash-lite", "gemini-3.5-flash-lite"]
+_API_URL_TEMPLATE = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
 
 _SYSTEM_PROMPT = """\
-You are a precise data-extraction assistant for a warranty-tracking system.
-Extract purchase information from the provided email or document text and return
-ONLY a valid JSON object — no prose, no markdown, no code fences.
+You are a precise data-extraction assistant for a warranty-tracking and purchase-radar system.
+Extract purchase information from the provided invoice image, PDF, or text and return
+ONLY a single valid JSON object (NEVER a JSON array, no prose, no markdown fences).
 
 Required JSON schema:
 {
@@ -56,167 +47,136 @@ Required JSON schema:
 }
 
 Rules:
-1. If you are uncertain about a field, set it to null — do NOT guess.
-2. If the overall extraction is uncertain, set confidence to "low".
-3. confidence = "high"   → product_name, purchase_date, price, AND retailer/brand all found
-   confidence = "medium" → at least product_name AND price found
-   confidence = "low"    → anything else
-4. price must be a plain number (no currency symbols). Use INR value if multiple currencies.
-5. purchase_date must be ISO 8601 (YYYY-MM-DD).
-6. warranty_period_months: convert years to months (1 year = 12 months).
-7. return_window_days: integer number of days in the return/replacement window.
-8. MULTILINGUAL: The input may be in Hindi, Hinglish, or any regional-language format.
-   You MUST still extract all fields correctly and return them in the English-keyed JSON schema.
+1. Always return a SINGLE JSON object `{...}`, never a list `[...]`.
+2. If the bill/invoice contains multiple line items, combine the main item names into "product_name" (e.g. "Orange Powder, Walnuts, Coin (+3 more)") and set "price" to the final total bill amount (or sum of line item amounts).
+3. If "brand" is not distinct from the store/retailer on a multi-item bill, set "brand" to the brand of the primary product or the store/bill name.
+4. "price" must be a plain number (no currency symbols). Ignore penalty/fine-print charges like cheque bouncing charges.
+5. "purchase_date" must be ISO 8601 (YYYY-MM-DD).
+6. "warranty_period_months": convert years to months (1 year = 12 months). If the invoice states "Warranty direct from service centre" or manufacturer warranty without specifying duration, use 12.
+7. "return_window_days": integer number of days in the return/replacement window if mentioned.
+8. Set "confidence" to "high" when at least product_name and 2 other fields (price, purchase_date, retailer, or brand) are found.
 """
 
-_FEW_SHOT_EXAMPLES = """
---- EXAMPLE 1 ---
-INPUT:
-Dear Customer,
-Thank you for your order from Amazon.in
-Order #405-9812345-0123456 placed on August 15, 2025.
-1 x Sony WH-1000XM5 Wireless Headphones (Black)
-Order Total: ₹28,990.00
-1-year manufacturer's warranty included.
-Return within 30 days of delivery.
 
-OUTPUT:
-{"product_name": "Sony WH-1000XM5 Wireless Headphones (Black)", "brand": "Sony", "retailer": "Amazon.in", "purchase_date": "2025-08-15", "price": 28990.00, "warranty_period_months": 12, "return_window_days": 30, "confidence": "high"}
-
---- EXAMPLE 2 ---
-INPUT:
-Hi Ananya,
-Your Flipkart order OD126789012345678901 has been confirmed.
-Order Date: 10 September 2025
-Boat Airdopes 411 Pro True Wireless Earbuds
-₹1,799
-7-day replacement guarantee.
-
-OUTPUT:
-{"product_name": "Boat Airdopes 411 Pro True Wireless Earbuds", "brand": "Boat", "retailer": "Flipkart", "purchase_date": "2025-09-10", "price": 1799.00, "warranty_period_months": null, "return_window_days": 7, "confidence": "high"}
-
---- EXAMPLE 3 (uncertain — model must say low) ---
-INPUT:
-Thanks for shopping with us. Your item will be dispatched shortly.
-Total charged: ₹3,500
-
-OUTPUT:
-{"product_name": null, "brand": null, "retailer": null, "purchase_date": null, "price": 3500.00, "warranty_period_months": null, "return_window_days": null, "confidence": "low"}
-
---- EXAMPLE 4 (Hindi / Hinglish) ---
-INPUT:
-प्रिय ग्राहक,
-आपका Meesho ऑर्डर confirm ho gaya hai.
-ऑर्डर ID: 987654321012
-उत्पाद: Samsung Galaxy Buds2 Pro (Graphite)
-कुल राशि: ₹8,999
-ऑर्डर दिनांक: 3 सितम्बर 2025
-7 दिन वापसी नीति लागू है.
-
-OUTPUT:
-{"product_name": "Samsung Galaxy Buds2 Pro (Graphite)", "brand": "Samsung", "retailer": "Meesho", "purchase_date": "2025-09-03", "price": 8999.00, "warranty_period_months": null, "return_window_days": 7, "confidence": "high"}
-
---- END EXAMPLES ---
-"""
-
-_USER_PROMPT_TEMPLATE = """\
-{system}
-
-{few_shot}
-
-Now extract from the following text:
-
-INPUT:
-{text}
-
-OUTPUT:"""
-
-
-# ── Main extraction function ──────────────────────────────────────────────────
-
-def extract_with_llm(text: str) -> Optional[ExtractionResult]:
+def extract_with_llm(
+    text: str,
+    file_bytes: Optional[bytes] = None,
+    mime_type: Optional[str] = None,
+) -> Optional[ExtractionResult]:
     """
-    Send text to Gemini and parse the structured JSON response.
-
-    Returns:
-        ExtractionResult with pass_used='llm', or None if the API call fails
-        or the response is not valid JSON matching the schema.
+    Send document image/PDF bytes and/or extracted text to the Gemini API
+    and parse the structured JSON response.
     """
-    if genai is None:
-        logger.warning(
-            "google-generativeai SDK not installed — LLM extraction disabled. "
-            "pip install google-generativeai to enable it."
-        )
+    api_key = (_GEMINI_API_KEY or os.getenv("GEMINI_API_KEY") or "").strip()
+    if not api_key:
+        logger.warning("GEMINI_API_KEY not set — LLM extraction skipped.")
         return None
 
-    if not _GEMINI_API_KEY or not _GEMINI_API_KEY.strip().startswith("AIza"):
-        logger.warning(
-            "Valid GEMINI_API_KEY (starting with 'AIza') not set — LLM extraction fallback skipped."
-        )
-        return None
-
-    # Truncate very long documents to avoid hitting context limits
     max_chars = 8_000
-    truncated_text = text[:max_chars]
-    if len(text) > max_chars:
-        logger.info("LLM input truncated from %d to %d chars", len(text), max_chars)
+    truncated_text = (text or "")[:max_chars]
 
-    prompt = _USER_PROMPT_TEMPLATE.format(
-        system=_SYSTEM_PROMPT,
-        few_shot=_FEW_SHOT_EXAMPLES,
-        text=truncated_text,
-    )
+    parts: list[dict] = [{"text": _SYSTEM_PROMPT}]
 
-    try:
-        genai.configure(api_key=_GEMINI_API_KEY)
-        model = genai.GenerativeModel(_MODEL)
-        response = model.generate_content(
-            prompt,
-            generation_config=genai.types.GenerationConfig(
-                temperature=0.0,
-                max_output_tokens=512,
-            ),
-            request_options={"timeout": 8.0},
-        )
-        raw_content = response.text if response.text else ""
-    except Exception as exc:
-        logger.error("Gemini API error: %s", exc)
-        return None
+    if file_bytes and mime_type in {
+        "image/jpeg",
+        "image/jpg",
+        "image/png",
+        "image/webp",
+        "application/pdf",
+    }:
+        norm_mime = "image/jpeg" if mime_type == "image/jpg" else mime_type
+        b64_data = base64.b64encode(file_bytes).decode("ascii")
+        parts.append({"inline_data": {"mime_type": norm_mime, "data": b64_data}})
 
-    return _parse_llm_response(raw_content)
+    if truncated_text.strip():
+        parts.append({"text": f"\nExtracted OCR / Document Text:\n{truncated_text}\n\nReturn JSON object:"})
+    else:
+        parts.append({"text": "\nExtract all purchase and warranty fields from this document as a single JSON object:"})
+
+    payload = {
+        "contents": [{"role": "user", "parts": parts}],
+        "generationConfig": {
+            "temperature": 0.0,
+            "maxOutputTokens": 512,
+            "responseMimeType": "application/json",
+        },
+    }
+
+    for model_name in _MODELS:
+        url = _API_URL_TEMPLATE.format(model=model_name)
+        try:
+            resp = httpx.post(
+                url,
+                params={"key": api_key},
+                json=payload,
+                timeout=12.0,
+            )
+            if resp.status_code == 404:
+                continue
+            resp.raise_for_status()
+            body = resp.json()
+            candidates = body.get("candidates") or []
+            if not candidates:
+                continue
+            content_parts = candidates[0].get("content", {}).get("parts") or []
+            raw_text = "".join(p.get("text", "") for p in content_parts if "text" in p).strip()
+            if raw_text:
+                parsed = _parse_llm_response(raw_text, model_name=model_name)
+                if parsed is not None:
+                    return parsed
+        except Exception as exc:
+            logger.warning("Gemini API call failed for model %s: %s", model_name, exc)
+
+    return None
 
 
-def _parse_llm_response(raw: str) -> Optional[ExtractionResult]:
-    """Parse Gemini's raw text output into an ExtractionResult."""
+def _parse_llm_response(raw: str, model_name: str = "gemini-3.1-flash-lite") -> Optional[ExtractionResult]:
+    """Parse Gemini's raw JSON output into an ExtractionResult."""
     clean = raw.strip()
-    # Strip possible markdown code fences
     if clean.startswith("```"):
         lines = clean.splitlines()
-        clean = "\n".join(
-            line for line in lines if not line.startswith("```")
-        ).strip()
+        clean = "\n".join(line for line in lines if not line.startswith("```")).strip()
 
     try:
-        data: dict = json.loads(clean)
+        parsed_json = json.loads(clean)
     except json.JSONDecodeError as exc:
-        logger.error(
-            "LLM response is not valid JSON (error at char %d): %r…",
-            exc.pos,
-            raw[:200],
-        )
+        logger.error("LLM response is not valid JSON (error at char %d): %r", exc.pos, raw[:200])
+        return None
+
+    # Handle case where model returns a list of items instead of a single dict
+    if isinstance(parsed_json, list):
+        valid_dicts = [d for d in parsed_json if isinstance(d, dict)]
+        if not valid_dicts:
+            return None
+        if len(valid_dicts) == 1:
+            data = valid_dicts[0]
+        else:
+            names = [str(d.get("product_name")).strip() for d in valid_dicts if d.get("product_name")]
+            shown = ", ".join(names[:3])
+            extra = f" (+{len(names) - 3} more)" if len(names) > 3 else ""
+            total_price = sum(
+                float(d["price"]) for d in valid_dicts if d.get("price") is not None
+            )
+            data = dict(valid_dicts[0])
+            data["product_name"] = f"{shown}{extra}" if shown else None
+            if total_price > 0:
+                data["price"] = round(total_price, 2)
+    elif isinstance(parsed_json, dict):
+        data = parsed_json
+    else:
         return None
 
     result = ExtractionResult(pass_used="llm")
     result.product_name = _str_or_none(data.get("product_name"))
-    result.brand = _str_or_none(data.get("brand"))
+    result.brand = _str_or_none(data.get("brand")) or _str_or_none(data.get("retailer"))
     result.retailer = _str_or_none(data.get("retailer"))
     result.price = _decimal_or_none(data.get("price"))
-    result.confidence = _validated_confidence(data.get("confidence", "low"))
+    result.confidence = _validated_confidence(data.get("confidence", "high" if result.product_name else "low"))
 
     raw_date = data.get("purchase_date")
     if raw_date and isinstance(raw_date, str):
         try:
-            result.purchase_date = date.fromisoformat(raw_date)
+            result.purchase_date = date.fromisoformat(raw_date[:10])
         except ValueError:
             logger.warning("LLM returned invalid purchase_date: %r", raw_date)
 
@@ -234,18 +194,19 @@ def _parse_llm_response(raw: str) -> Optional[ExtractionResult]:
         except (TypeError, ValueError):
             pass
 
-    result.source_snippet = f"[LLM extraction — model: {_MODEL}]"
-
+    result.source_snippet = f"[Gemini Vision AI — {model_name}]"
     logger.info(
-        "LLM extraction complete: product=%r price=%s confidence=%s",
+        "LLM extraction complete (%s): product=%r brand=%r retailer=%r price=%s date=%s confidence=%s",
+        model_name,
         result.product_name,
+        result.brand,
+        result.retailer,
         result.price,
+        result.purchase_date,
         result.confidence,
     )
     return result
 
-
-# ── Helper utilities ──────────────────────────────────────────────────────────
 
 def _str_or_none(value) -> Optional[str]:
     if value is None or (isinstance(value, str) and not value.strip()):
@@ -265,5 +226,4 @@ def _decimal_or_none(value) -> Optional[Decimal]:
 def _validated_confidence(value) -> str:
     if value in ("high", "medium", "low"):
         return value
-    logger.warning("LLM returned unexpected confidence value %r — defaulting to 'low'", value)
     return "low"

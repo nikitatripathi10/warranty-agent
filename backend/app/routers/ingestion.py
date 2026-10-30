@@ -95,24 +95,72 @@ def _rebuild_credentials(user: User) -> Credentials:
     )
 
 
-def _run_extraction_pipeline(text: str, hint: Optional[str] = None) -> ExtractionResult:
+def _run_extraction_pipeline(
+    text: str,
+    hint: Optional[str] = None,
+    file_bytes: Optional[bytes] = None,
+    mime_type: Optional[str] = None,
+) -> ExtractionResult:
     """
-    Run Pass 1 (regex) then Pass 2 (LLM) if needed.
+    Run Pass 1 (regex) then Pass 2 (Gemini Multimodal Vision / LLM) if needed.
 
-    Returns whichever result is more confident.
+    Returns whichever result is more complete and confident.
     """
     regex_result = run_regex_pass(text, hint=hint)
-    if regex_result.confidence != "low":
+    final_result = regex_result
+
+    needs_llm = (
+        regex_result.confidence == "low"
+        or not regex_result.product_name
+        or regex_result.purchase_date is None
+    )
+
+    if not needs_llm:
         logger.info("Two-pass: Pass 1 sufficient (confidence=%s)", regex_result.confidence)
-        return regex_result
+    else:
+        logger.info("Two-pass: Invoking Gemini Vision / LLM extraction")
+        llm_result = extract_with_llm(text, file_bytes=file_bytes, mime_type=mime_type)
+        if llm_result is not None and llm_result.product_name:
+            # Merge any fields regex found that LLM left blank
+            if not llm_result.brand and regex_result.brand:
+                llm_result.brand = regex_result.brand
+            if not llm_result.retailer and regex_result.retailer:
+                llm_result.retailer = regex_result.retailer
+            if llm_result.purchase_date is None and regex_result.purchase_date is not None:
+                llm_result.purchase_date = regex_result.purchase_date
+            if llm_result.price is None and regex_result.price is not None:
+                llm_result.price = regex_result.price
+            if llm_result.warranty_period_months is None and regex_result.warranty_period_months is not None:
+                llm_result.warranty_period_months = regex_result.warranty_period_months
+            if llm_result.return_window_days is None and regex_result.return_window_days is not None:
+                llm_result.return_window_days = regex_result.return_window_days
+            final_result = llm_result
+        elif llm_result is not None and regex_result.product_name:
+            # Fill missing fields on regex_result from llm_result
+            if not final_result.brand and llm_result.brand:
+                final_result.brand = llm_result.brand
+            if not final_result.retailer and llm_result.retailer:
+                final_result.retailer = llm_result.retailer
+            if final_result.purchase_date is None and llm_result.purchase_date is not None:
+                final_result.purchase_date = llm_result.purchase_date
+            if final_result.price is None and llm_result.price is not None:
+                final_result.price = llm_result.price
+        else:
+            logger.warning("Two-pass: LLM fallback returned None — using regex result")
 
-    logger.info("Two-pass: Pass 1 confidence='low', triggering LLM fallback")
-    llm_result = extract_with_llm(text)
-    if llm_result is not None:
-        return llm_result
+    if final_result.product_name:
+        fallback = apply_category_fallback(
+            product_name=final_result.product_name,
+            brand=final_result.brand,
+            existing_warranty_months=final_result.warranty_period_months,
+            existing_return_days=final_result.return_window_days,
+        )
+        if final_result.warranty_period_months is None:
+            final_result.warranty_period_months = fallback["warranty_period_months"]
+        if final_result.return_window_days is None:
+            final_result.return_window_days = fallback["return_window_days"]
 
-    logger.warning("Two-pass: LLM fallback returned None — using regex result")
-    return regex_result
+    return final_result
 
 
 def _compute_warranty_end(purchase_date: Optional[date], months: Optional[int]) -> Optional[date]:
@@ -371,15 +419,41 @@ async def upload_document(
 
     source_file_ref = str(save_path)
 
-    # -- Extract text --
+    # -- Extract & analyse document (Gemini Vision first for images, OCR + regex fallback) --
     content_type = file.content_type or ""
-    text, ocr_used = extract_text(file_bytes, safe_filename, content_type=content_type)
+    is_image_upload = content_type.startswith("image/") or safe_filename.lower().endswith(
+        (".jpg", ".jpeg", ".png", ".webp")
+    )
 
-    if not text.strip():
-        logger.warning("No text extracted from '%s' — result will have low confidence", safe_filename)
+    result: Optional[ExtractionResult] = None
+    ocr_used = False
 
-    # -- Run two-pass extraction --
-    result = _run_extraction_pipeline(text)
+    if is_image_upload:
+        # Fast path: use Gemini Vision API directly on the image bytes (~2-3s, zero CPU OCR bottleneck)
+        vision_res = extract_with_llm("", file_bytes=file_bytes, mime_type=content_type or "image/jpeg")
+        if vision_res is not None and vision_res.product_name:
+            fallback = apply_category_fallback(
+                product_name=vision_res.product_name,
+                brand=vision_res.brand,
+                existing_warranty_months=vision_res.warranty_period_months,
+                existing_return_days=vision_res.return_window_days,
+            )
+            if vision_res.warranty_period_months is None:
+                vision_res.warranty_period_months = fallback["warranty_period_months"]
+            if vision_res.return_window_days is None:
+                vision_res.return_window_days = fallback["return_window_days"]
+            result = vision_res
+            ocr_used = True
+
+    if result is None:
+        text, ocr_used = extract_text(file_bytes, safe_filename, content_type=content_type)
+        if not text.strip():
+            logger.warning("No text extracted from '%s' — result will have low confidence", safe_filename)
+        result = _run_extraction_pipeline(
+            text,
+            file_bytes=file_bytes,
+            mime_type=content_type,
+        )
 
     # -- Persist to DB --
     try:

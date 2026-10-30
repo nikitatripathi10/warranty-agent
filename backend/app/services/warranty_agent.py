@@ -32,7 +32,8 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 
 _GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-_MODEL = "gemini-1.5-flash"
+_MODELS = ["gemini-3.1-flash-lite", "gemini-3.5-flash-lite"]
+_API_URL_TEMPLATE = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
 
 _SYSTEM_PROMPT = """\
 You are Warranty Radar, a helpful personal warranty and purchase assistant.
@@ -95,7 +96,8 @@ def answer_query(db: Session, user_id, question: str) -> str:
     Returns:
         Plain-text answer string.
     """
-    if not _GEMINI_API_KEY:
+    api_key = (_GEMINI_API_KEY or os.getenv("GEMINI_API_KEY") or "").strip()
+    if not api_key:
         return (
             "The AI assistant is not configured. "
             "Please set the GEMINI_API_KEY environment variable to enable this feature."
@@ -115,33 +117,39 @@ User's question: {question}
 
 Answer:"""
 
-    try:
-        import google.generativeai as genai
+    import httpx
 
-        genai.configure(api_key=_GEMINI_API_KEY)
-        model = genai.GenerativeModel(_MODEL)
-        response = model.generate_content(
-            prompt,
-            generation_config=genai.types.GenerationConfig(
-                temperature=0.3,
-                max_output_tokens=400,
-            ),
-        )
-        answer = response.text.strip() if response.text else ""
-        if not answer:
-            return "I could not generate an answer. Please try rephrasing your question."
+    payload = {
+        "contents": [{"role": "user", "parts": [{"text": prompt}]}],
+        "generationConfig": {"temperature": 0.3, "maxOutputTokens": 400},
+    }
 
-        logger.info(
-            "Agent query answered for user %s: %r → %d chars",
-            user_id,
-            question[:60],
-            len(answer),
-        )
-        return answer
+    for model_name in _MODELS:
+        url = _API_URL_TEMPLATE.format(model=model_name)
+        try:
+            resp = httpx.post(url, params={"key": api_key}, json=payload, timeout=12.0)
+            if resp.status_code == 404:
+                continue
+            resp.raise_for_status()
+            body = resp.json()
+            candidates = body.get("candidates") or []
+            if not candidates:
+                continue
+            parts = candidates[0].get("content", {}).get("parts") or []
+            answer = "".join(p.get("text", "") for p in parts if "text" in p).strip()
+            if answer:
+                logger.info(
+                    "Agent query answered (%s) for user %s: %r → %d chars",
+                    model_name,
+                    user_id,
+                    question[:60],
+                    len(answer),
+                )
+                return answer
+        except Exception as exc:
+            logger.warning("Agent query failed on %s: %s", model_name, exc)
 
-    except Exception as exc:
-        logger.error("Agent query failed: %s", exc)
-        return (
-            "Sorry, I encountered an error while looking up your warranty information. "
-            "Please try again in a moment."
-        )
+    return (
+        "Sorry, I encountered an error while looking up your warranty information. "
+        "Please try again in a moment."
+    )

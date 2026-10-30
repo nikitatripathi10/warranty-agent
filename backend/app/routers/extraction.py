@@ -57,14 +57,28 @@ def test_extraction(body: ExtractionTestRequest) -> ExtractionResultSchema:
 
 
 def _to_schema(result) -> ExtractionResultSchema:
+    from app.services.category_fallback import apply_category_fallback
+    w_months = result.warranty_period_months
+    r_days = result.return_window_days
+    if result.product_name:
+        fallback = apply_category_fallback(
+            product_name=result.product_name,
+            brand=result.brand,
+            existing_warranty_months=w_months,
+            existing_return_days=r_days,
+        )
+        if w_months is None:
+            w_months = fallback["warranty_period_months"]
+        if r_days is None:
+            r_days = fallback["return_window_days"]
     return ExtractionResultSchema(
         product_name=result.product_name,
         brand=result.brand,
         retailer=result.retailer,
         purchase_date=result.purchase_date,
         price=result.price,
-        warranty_period_months=result.warranty_period_months,
-        return_window_days=result.return_window_days,
+        warranty_period_months=w_months,
+        return_window_days=r_days,
         confidence=result.confidence,
         source_snippet=result.source_snippet,
         pass_used=result.pass_used,
