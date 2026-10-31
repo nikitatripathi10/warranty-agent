@@ -1,6 +1,6 @@
 import { motion } from 'motion/react'
 import { GlassCard, Button, Field, ConfidenceBadge, UrgencyChip, Spinner } from '../components/ui'
-import { fmt, fmtDate, fmtPrice, daysUntil } from '../lib/format'
+import { fmt, fmtDate, fmtPrice, daysUntil, parseAdditionalWarranty } from '../lib/format'
 import Icon from '../components/Icon'
 
 export default function DetailView({
@@ -21,6 +21,7 @@ export default function DetailView({
   onAgentQuery,
 }) {
   const wp = purchase.warranty_period
+  const { additionalWarranty, cleanSnippet } = parseAdditionalWarranty(wp?.source_snippet)
   const returnDays = wp?.return_window_end_date ? daysUntil(wp.return_window_end_date) : null
   const warrantyDays = wp?.warranty_end_date ? daysUntil(wp.warranty_end_date) : null
 
@@ -104,14 +105,27 @@ export default function DetailView({
               </div>
             </div>
 
+            {/* Additional / Extended Warranty Section */}
+            {additionalWarranty && (
+              <div className="mt-6 rounded-xl border border-cyan-glow/35 bg-cyan-glow/10 p-4">
+                <div className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-cyan-300">
+                  <Icon name="shieldCheck" size={15} />
+                  <span>Additional / Extended Warranty</span>
+                </div>
+                <p className="text-sm font-medium text-fg leading-relaxed whitespace-pre-wrap">
+                  {additionalWarranty}
+                </p>
+              </div>
+            )}
+
             {/* Extracted Evidence Snippet */}
-            {wp?.source_snippet && (
-              <div className="mt-6 rounded-xl border border-line bg-glass p-4">
+            {cleanSnippet && (
+              <div className="mt-4 rounded-xl border border-line bg-glass p-4">
                 <div className="mb-1 text-xs font-semibold uppercase tracking-wider text-subtle">
                   Extraction Source Evidence
                 </div>
                 <p className="font-mono text-xs text-muted leading-relaxed whitespace-pre-wrap">
-                  &ldquo;{wp.source_snippet}&rdquo;
+                  &ldquo;{cleanSnippet}&rdquo;
                 </p>
               </div>
             )}

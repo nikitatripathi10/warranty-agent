@@ -6,6 +6,8 @@ import {
   GlassCard,
   Button,
   Spinner,
+  Field,
+  Select,
   Textarea,
   Notice,
   UserChip,
@@ -46,6 +48,15 @@ export default function LandingView({
   // Upload Document props
   uploadFile,
   setUploadFile,
+  additionalUploadFile,
+  setAdditionalUploadFile,
+  additionalWarrantyMonths = '',
+  setAdditionalWarrantyMonths,
+  additionalWarrantyNotes = '',
+  setAdditionalWarrantyNotes,
+  selectedUploadPurchaseId = '',
+  setSelectedUploadPurchaseId,
+  purchases = [],
   uploadLoading,
   uploadProgress,
   uploadResult,
@@ -62,9 +73,18 @@ export default function LandingView({
   purchasesCount = 0,
   alertsCount = 0,
 }) {
-  const [dragover, setDragover] = useState(false)
-  const fileInputRef = useRef(null)
+  const [dragoverStd, setDragoverStd] = useState(false)
+  const [dragoverAdd, setDragoverAdd] = useState(false)
+  const stdFileInputRef = useRef(null)
+  const addFileInputRef = useRef(null)
   const palette = ANIMATION_PALETTES[activePalette] || ANIMATION_PALETTES.cyberpunk
+
+  const hasManualAdditional = Boolean(
+    String(additionalWarrantyMonths || '').trim() || String(additionalWarrantyNotes || '').trim()
+  )
+  const canSubmitUpload = Boolean(
+    uploadFile || additionalUploadFile || (selectedUploadPurchaseId && hasManualAdditional)
+  )
 
   const handleConnectGmail = () => {
     window.location.href = `${apiBase}/auth/gmail/connect`
@@ -328,76 +348,240 @@ export default function LandingView({
           )}
         </GlassCard>
 
-        {/* 3. Upload a Document Card */}
-        <GlassCard className="p-6 sm:p-7">
-          <div className="mb-5 flex items-center gap-3.5">
+        {/* 3. Upload a Document Card (Dual Upload + Manual Additional Warranty) */}
+        <GlassCard className="p-6 sm:p-7 space-y-5">
+          <div className="flex items-center gap-3.5">
             <div className="grid size-11 shrink-0 place-items-center rounded-xl border border-indigo-400/30 bg-indigo-500/15 text-lg shadow-sm">
               📄
             </div>
             <div>
-              <h2 className="text-lg font-bold text-fg">Upload a Document</h2>
+              <h2 className="text-lg font-bold text-fg">Upload Documents</h2>
               <p className="text-xs text-muted">
-                Submit an invoice, warranty card, or purchase receipt for extraction
+                Upload Manufacturer / Standard Warranty and/or Additional / Extended Warranty documents, or enter additional warranty details manually
               </p>
             </div>
           </div>
 
-          <div
-            onDragOver={e => {
-              e.preventDefault()
-              setDragover(true)
-            }}
-            onDragLeave={() => setDragover(false)}
-            onDrop={e => {
-              e.preventDefault()
-              setDragover(false)
-              const f = e.dataTransfer.files?.[0]
-              if (f) setUploadFile(f)
-            }}
-            onClick={() => fileInputRef.current?.click()}
-            className={`relative mb-4 cursor-pointer rounded-2xl border-2 border-dashed px-6 py-9 text-center transition-all ${
-              dragover
-                ? 'border-cyan-glow bg-cyan-glow/10 shadow-[0_0_30px_rgba(56,189,248,0.25)]'
-                : 'border-line hover:border-indigo-400/60 hover:bg-glass-hover'
-            }`}
-          >
-            <input
-              id="upload-file-input"
-              ref={fileInputRef}
-              type="file"
-              accept=".pdf,.jpg,.jpeg,.png,.webp,.tiff"
-              onChange={e => setUploadFile(e.target.files?.[0])}
-              style={{ display: 'none' }}
-            />
+          {/* Two Separate Upload Areas */}
+          <div className="grid gap-4 sm:grid-cols-2">
+            {/* Manufacturer / Standard Warranty Document */}
+            <div className="flex flex-col justify-between rounded-2xl border border-line bg-glass/40 p-3.5">
+              <div className="mb-2.5 flex items-start justify-between gap-2">
+                <div>
+                  <span className="inline-block rounded-full bg-indigo-500/20 px-2 py-0.5 text-[0.62rem] font-semibold uppercase tracking-wider text-indigo-300 ring-1 ring-indigo-400/30">
+                    Document 1 · Standard
+                  </span>
+                  <h3 className="mt-1 text-xs font-bold text-fg">
+                    Manufacturer / Standard Warranty Document
+                  </h3>
+                </div>
+                {uploadFile && (
+                  <button
+                    type="button"
+                    onClick={() => setUploadFile(null)}
+                    className="rounded px-1.5 py-0.5 text-[0.68rem] text-subtle hover:bg-rose-500/15 hover:text-rose-300"
+                  >
+                    Clear ×
+                  </button>
+                )}
+              </div>
 
-            <div className="mx-auto mb-3 text-3xl">
-              {uploadFile ? '📎' : '📁'}
+              <div
+                onDragOver={e => {
+                  e.preventDefault()
+                  setDragoverStd(true)
+                }}
+                onDragLeave={() => setDragoverStd(false)}
+                onDrop={e => {
+                  e.preventDefault()
+                  setDragoverStd(false)
+                  const f = e.dataTransfer.files?.[0]
+                  if (f) setUploadFile(f)
+                }}
+                onClick={() => stdFileInputRef.current?.click()}
+                className={`relative cursor-pointer rounded-xl border-2 border-dashed px-4 py-6 text-center transition-all ${
+                  dragoverStd
+                    ? 'border-cyan-glow bg-cyan-glow/10 shadow-[0_0_24px_rgba(56,189,248,0.25)]'
+                    : 'border-line hover:border-indigo-400/60 hover:bg-glass-hover'
+                }`}
+              >
+                <input
+                  id="upload-file-input"
+                  ref={stdFileInputRef}
+                  type="file"
+                  accept=".pdf,.jpg,.jpeg,.png,.webp,.tiff"
+                  onChange={e => setUploadFile(e.target.files?.[0] || null)}
+                  style={{ display: 'none' }}
+                />
+
+                <div className="mx-auto mb-2 text-2xl">
+                  {uploadFile ? '📎' : '📁'}
+                </div>
+
+                {uploadFile ? (
+                  <div>
+                    <div className="text-xs font-semibold text-cyan-glow break-all">
+                      {uploadFile.name}
+                    </div>
+                    <div className="mt-0.5 text-[0.68rem] text-subtle">
+                      {(uploadFile.size / 1024 / 1024).toFixed(2)} MB · Click to replace
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <div className="text-xs font-semibold text-fg">
+                      Drop Standard Warranty file, or{' '}
+                      <span className="text-cyan-glow underline">browse</span>
+                    </div>
+                    <div className="mt-0.5 text-[0.68rem] text-subtle">
+                      PDF, JPEG, PNG, WEBP, TIFF
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
 
-            {uploadFile ? (
-              <div>
-                <div className="text-sm font-semibold text-cyan-glow break-all">
-                  {uploadFile.name}
+            {/* Additional / Extended Warranty Document */}
+            <div className="flex flex-col justify-between rounded-2xl border border-line bg-glass/40 p-3.5">
+              <div className="mb-2.5 flex items-start justify-between gap-2">
+                <div>
+                  <span className="inline-block rounded-full bg-cyan-500/20 px-2 py-0.5 text-[0.62rem] font-semibold uppercase tracking-wider text-cyan-300 ring-1 ring-cyan-400/30">
+                    Document 2 · Extended
+                  </span>
+                  <h3 className="mt-1 text-xs font-bold text-fg">
+                    Additional / Extended Warranty Document
+                  </h3>
                 </div>
-                <div className="mt-1 text-xs text-subtle">
-                  {(uploadFile.size / 1024 / 1024).toFixed(2)} MB · Click or drag to replace
-                </div>
+                {additionalUploadFile && (
+                  <button
+                    type="button"
+                    onClick={() => setAdditionalUploadFile?.(null)}
+                    className="rounded px-1.5 py-0.5 text-[0.68rem] text-subtle hover:bg-rose-500/15 hover:text-rose-300"
+                  >
+                    Clear ×
+                  </button>
+                )}
               </div>
-            ) : (
-              <div>
-                <div className="text-sm font-semibold text-fg">
-                  Drag and drop a file here, or{' '}
-                  <span className="text-cyan-glow underline">browse</span>
+
+              <div
+                onDragOver={e => {
+                  e.preventDefault()
+                  setDragoverAdd(true)
+                }}
+                onDragLeave={() => setDragoverAdd(false)}
+                onDrop={e => {
+                  e.preventDefault()
+                  setDragoverAdd(false)
+                  const f = e.dataTransfer.files?.[0]
+                  if (f) setAdditionalUploadFile?.(f)
+                }}
+                onClick={() => addFileInputRef.current?.click()}
+                className={`relative cursor-pointer rounded-xl border-2 border-dashed px-4 py-6 text-center transition-all ${
+                  dragoverAdd
+                    ? 'border-cyan-glow bg-cyan-glow/10 shadow-[0_0_24px_rgba(56,189,248,0.25)]'
+                    : 'border-line hover:border-cyan-400/60 hover:bg-glass-hover'
+                }`}
+              >
+                <input
+                  id="upload-additional-file-input"
+                  ref={addFileInputRef}
+                  type="file"
+                  accept=".pdf,.jpg,.jpeg,.png,.webp,.tiff"
+                  onChange={e => setAdditionalUploadFile?.(e.target.files?.[0] || null)}
+                  style={{ display: 'none' }}
+                />
+
+                <div className="mx-auto mb-2 text-2xl">
+                  {additionalUploadFile ? '📎' : '🛡️'}
                 </div>
-                <div className="mt-1 text-xs text-subtle">
-                  PDF, JPEG, PNG, WEBP, TIFF — up to 20 MB
-                </div>
+
+                {additionalUploadFile ? (
+                  <div>
+                    <div className="text-xs font-semibold text-cyan-glow break-all">
+                      {additionalUploadFile.name}
+                    </div>
+                    <div className="mt-0.5 text-[0.68rem] text-subtle">
+                      {(additionalUploadFile.size / 1024 / 1024).toFixed(2)} MB · Click to replace
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <div className="text-xs font-semibold text-fg">
+                      Drop Additional Warranty file, or{' '}
+                      <span className="text-cyan-glow underline">browse</span>
+                    </div>
+                    <div className="mt-0.5 text-[0.68rem] text-subtle">
+                      Upload both together or only one
+                    </div>
+                  </div>
+                )}
               </div>
-            )}
+            </div>
+          </div>
+
+          {/* Manual Entry Option for Additional Warranty */}
+          <div className="rounded-2xl border border-line bg-glass/50 p-4 space-y-3.5">
+            <div>
+              <h3 className="text-xs font-bold uppercase tracking-wider text-fg">
+                Manual Entry for Additional / Extended Warranty
+              </h3>
+              <p className="mt-0.5 text-[0.72rem] text-muted">
+                No additional warranty document? Manually enter your additional warranty details below.
+              </p>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Field
+                id="workspace-manual-additional-months"
+                label="Additional Warranty (Months)"
+                type="number"
+                min="1"
+                max="120"
+                placeholder="e.g. 12 or 24"
+                value={additionalWarrantyMonths}
+                onChange={v => setAdditionalWarrantyMonths?.(v)}
+              />
+
+              <div className="block">
+                <span className="mb-1.5 block text-xs font-medium tracking-wide text-muted uppercase">
+                  Associate with Product
+                </span>
+                <Select
+                  value={selectedUploadPurchaseId}
+                  onChange={e => setSelectedUploadPurchaseId?.(e.target.value)}
+                  wrapClassName="w-full"
+                  className="w-full py-2.5"
+                >
+                  <option value="">Auto-detect from uploaded document</option>
+                  {purchases.map(p => (
+                    <option key={p.id} value={p.id}>
+                      {p.product_name} ({p.retailer || p.brand})
+                    </option>
+                  ))}
+                </Select>
+              </div>
+            </div>
+
+            <div>
+              <label
+                htmlFor="workspace-manual-additional-notes"
+                className="mb-1.5 block text-xs font-medium tracking-wide text-muted uppercase"
+              >
+                Additional Warranty Details / Coverage Notes
+              </label>
+              <Textarea
+                id="workspace-manual-additional-notes"
+                rows={3}
+                value={additionalWarrantyNotes}
+                onChange={e => setAdditionalWarrantyNotes?.(e.target.value)}
+                placeholder="Type your additional warranty details here (e.g., '1 Year Extended Warranty by OnsiteGo, Policy #EXT-9021')…"
+                className="text-xs leading-relaxed"
+              />
+            </div>
           </div>
 
           {uploadLoading && uploadProgress > 0 && (
-            <div className="mb-4 h-2 overflow-hidden rounded-full bg-line">
+            <div className="h-2 overflow-hidden rounded-full bg-line">
               <motion.div
                 className="h-full bg-linear-to-r from-indigo-500 to-sky-400 transition-all"
                 style={{ width: `${uploadProgress}%` }}
@@ -411,33 +595,33 @@ export default function LandingView({
             size="lg"
             full
             onClick={isConnected ? onUpload : handleConnectGmail}
-            disabled={!uploadFile || uploadLoading}
+            disabled={!canSubmitUpload || uploadLoading}
           >
             {uploadLoading ? (
               <>
                 <Spinner size={16} />
-                <span>Analysing document…</span>
+                <span>Analysing &amp; saving…</span>
               </>
             ) : (
               <span>Analyse &amp; Save</span>
             )}
           </Button>
 
-          {!isConnected && uploadFile && (
-            <p className="mt-2.5 text-center text-xs text-subtle">
+          {!isConnected && canSubmitUpload && (
+            <p className="text-center text-xs text-subtle">
               Connect your Google account first to save extracted documents to your profile.
             </p>
           )}
 
           {uploadError && (
-            <Notice tone="error" className="mt-4">
+            <Notice tone="error">
               {uploadError}
             </Notice>
           )}
 
           {uploadResult && (
-            <div className="mt-5 space-y-4">
-              <Notice tone="success">Purchase record saved successfully.</Notice>
+            <div className="space-y-4">
+              <Notice tone="success">Purchase and warranty information saved successfully.</Notice>
               <ResultGrid result={uploadResult.extraction} ocrUsed={uploadResult.ocr_used} />
             </div>
           )}

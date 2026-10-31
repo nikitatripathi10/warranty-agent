@@ -73,3 +73,17 @@ export function greeting() {
   return 'Good evening'
 }
 
+export function parseAdditionalWarranty(snippet) {
+  if (!snippet || typeof snippet !== 'string') {
+    return { additionalWarranty: null, cleanSnippet: snippet || '' }
+  }
+  const match = snippet.match(/\[Additional Warranty:\s*([^\]]+)\]\s*/i)
+  if (!match) {
+    return { additionalWarranty: null, cleanSnippet: snippet }
+  }
+  const additionalWarranty = match[1].trim()
+  const cleanSnippet = snippet.replace(match[0], '').trim()
+  return { additionalWarranty, cleanSnippet }
+}
+
+

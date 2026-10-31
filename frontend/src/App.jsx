@@ -204,6 +204,10 @@ export default function App() {
 
   // ── Upload ──────────────────────────────────────────────────────────────────
   const [uploadFile, setUploadFile] = useState(null)
+  const [additionalUploadFile, setAdditionalUploadFile] = useState(null)
+  const [additionalWarrantyMonths, setAdditionalWarrantyMonths] = useState('')
+  const [additionalWarrantyNotes, setAdditionalWarrantyNotes] = useState('')
+  const [selectedUploadPurchaseId, setSelectedUploadPurchaseId] = useState('')
   const [uploadLoading, setUploadLoading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
   const [uploadResult, setUploadResult] = useState(null)
@@ -373,7 +377,13 @@ export default function App() {
   }
 
   async function handleUpload() {
-    if (!uploadFile || !userId) return
+    const cleanMonths = String(additionalWarrantyMonths || '').trim()
+    const cleanNotes = String(additionalWarrantyNotes || '').trim()
+    const hasManualAdditional = Boolean(cleanMonths || cleanNotes)
+    if (!userId || (!uploadFile && !additionalUploadFile && !(selectedUploadPurchaseId && hasManualAdditional))) {
+      return
+    }
+
     setUploadLoading(true)
     setUploadResult(null)
     setUploadError(null)
@@ -382,13 +392,100 @@ export default function App() {
     const prog = setInterval(() => setUploadProgress(p => Math.min(p + 8, 90)), 700)
 
     try {
-      const optimizedFile = await prepareFileForUpload(uploadFile)
+      const optimizedStdFile = uploadFile ? await prepareFileForUpload(uploadFile) : null
+      const optimizedAddFile = additionalUploadFile ? await prepareFileForUpload(additionalUploadFile) : null
       const prevIds = new Set(purchases.map(p => p.id))
+
+      const parsedManualMonths = cleanMonths ? Math.max(0, parseInt(cleanMonths, 10) || 0) : 0
+      const detailParts = []
+      if (parsedManualMonths > 0) detailParts.push(`+${parsedManualMonths} months`)
+      if (cleanNotes) detailParts.push(cleanNotes)
+      if (additionalUploadFile?.name) detailParts.push(`Additional Doc: ${additionalUploadFile.name}`)
+      if (uploadFile?.name && additionalUploadFile?.name) {
+        detailParts.push(`Manufacturer Doc: ${uploadFile.name}`)
+      }
+      const clientExtDetails = detailParts.length > 0 ? detailParts.join(' · ') : null
+
+      // Direct manual save to an existing selected product when no file is uploaded
+      if (!optimizedStdFile && !optimizedAddFile && selectedUploadPurchaseId && hasManualAdditional) {
+        const targetProd = purchases.find(p => p.id === selectedUploadPurchaseId)
+        if (!targetProd) throw new Error('Selected product not found.')
+
+        const baseDateStr =
+          targetProd.warranty_period?.warranty_end_date ||
+          targetProd.purchase_date ||
+          new Date().toISOString().slice(0, 10)
+        const baseDate = new Date(baseDateStr + 'T00:00:00')
+        if (parsedManualMonths > 0) {
+          baseDate.setDate(baseDate.getDate() + parsedManualMonths * 30)
+        }
+        const newEndDate = baseDate.toISOString().slice(0, 10)
+        const existingSnippet = (targetProd.warranty_period?.source_snippet || '').trim()
+        const updatedSnippet = clientExtDetails
+          ? `[Additional Warranty: ${clientExtDetails}]\n${existingSnippet}`.trim()
+          : existingSnippet
+
+        const patchRes = await fetch(
+          `${API_BASE}/purchases/${selectedUploadPurchaseId}?user_id=${encodeURIComponent(userId)}`,
+          {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              warranty_end_date: newEndDate,
+              source_snippet: updatedSnippet,
+            }),
+          }
+        )
+        const patchedPurchase = await patchRes.json()
+        if (!patchRes.ok) throw new Error(patchedPurchase.detail || `HTTP ${patchRes.status}`)
+
+        clearInterval(prog)
+        setUploadProgress(100)
+        setUploadResult({
+          purchase: patchedPurchase,
+          extraction: {
+            product_name: patchedPurchase.product_name,
+            brand: patchedPurchase.brand,
+            retailer: patchedPurchase.retailer,
+            purchase_date: patchedPurchase.purchase_date,
+            price: patchedPurchase.price,
+            warranty_period_months: (parsedManualMonths || 12),
+            additional_warranty_months: parsedManualMonths || null,
+            additional_warranty_details: clientExtDetails,
+            confidence: 'high',
+            source_snippet: updatedSnippet,
+          },
+          ocr_used: false,
+        })
+        setAdditionalWarrantyMonths('')
+        setAdditionalWarrantyNotes('')
+        addToast('Additional warranty saved and associated with product!', 'success')
+        loadPurchases()
+        loadAlerts()
+        return
+      }
 
       const sendUpload = async () => {
         const formData = new FormData()
-        formData.append('file', optimizedFile)
+        if (optimizedStdFile) {
+          formData.append('file', optimizedStdFile)
+        } else if (optimizedAddFile) {
+          // Also provide under 'file' if only Additional Warranty Document was chosen
+          formData.append('file', optimizedAddFile)
+        }
+        if (optimizedAddFile) {
+          formData.append('additional_file', optimizedAddFile)
+        }
         formData.append('user_id', userId)
+        if (cleanMonths) {
+          formData.append('additional_warranty_months', cleanMonths)
+        }
+        if (cleanNotes) {
+          formData.append('additional_warranty_notes', cleanNotes)
+        }
+        if (selectedUploadPurchaseId) {
+          formData.append('purchase_id', selectedUploadPurchaseId)
+        }
         return fetch(`${API_BASE}/ingestion/upload`, {
           method: 'POST',
           body: formData,
@@ -454,9 +551,26 @@ export default function App() {
         )
       }
 
+      if (clientExtDetails && !data.extraction.additional_warranty_details) {
+        data.extraction.additional_warranty_details = clientExtDetails
+      }
+      if (parsedManualMonths > 0 && !data.extraction.additional_warranty_months) {
+        data.extraction.additional_warranty_months = parsedManualMonths
+        data.extraction.warranty_period_months =
+          (Number(data.extraction.warranty_period_months) || 0) + parsedManualMonths
+      }
+      if (uploadFile?.name && !data.extraction.manufacturer_doc_name) {
+        data.extraction.manufacturer_doc_name = uploadFile.name
+      }
+      if (additionalUploadFile?.name && !data.extraction.additional_doc_name) {
+        data.extraction.additional_doc_name = additionalUploadFile.name
+      }
+
       setFilterConf('')
       setUploadResult(data)
-      addToast('Document processed and saved!', 'success')
+      setAdditionalWarrantyMonths('')
+      setAdditionalWarrantyNotes('')
+      addToast('Purchase & warranty information saved!', 'success')
       loadPurchases()
       loadAlerts()
     } catch (err) {
@@ -653,6 +767,15 @@ export default function App() {
               onScanInbox={handleFetchEmails}
               uploadFile={uploadFile}
               setUploadFile={setUploadFile}
+              additionalUploadFile={additionalUploadFile}
+              setAdditionalUploadFile={setAdditionalUploadFile}
+              additionalWarrantyMonths={additionalWarrantyMonths}
+              setAdditionalWarrantyMonths={setAdditionalWarrantyMonths}
+              additionalWarrantyNotes={additionalWarrantyNotes}
+              setAdditionalWarrantyNotes={setAdditionalWarrantyNotes}
+              selectedUploadPurchaseId={selectedUploadPurchaseId}
+              setSelectedUploadPurchaseId={setSelectedUploadPurchaseId}
+              purchases={purchases}
               uploadLoading={uploadLoading}
               uploadProgress={uploadProgress}
               uploadResult={uploadResult}
@@ -719,6 +842,15 @@ export default function App() {
                   onScanInbox={handleFetchEmails}
                   uploadFile={uploadFile}
                   setUploadFile={setUploadFile}
+                  additionalUploadFile={additionalUploadFile}
+                  setAdditionalUploadFile={setAdditionalUploadFile}
+                  additionalWarrantyMonths={additionalWarrantyMonths}
+                  setAdditionalWarrantyMonths={setAdditionalWarrantyMonths}
+                  additionalWarrantyNotes={additionalWarrantyNotes}
+                  setAdditionalWarrantyNotes={setAdditionalWarrantyNotes}
+                  selectedUploadPurchaseId={selectedUploadPurchaseId}
+                  setSelectedUploadPurchaseId={setSelectedUploadPurchaseId}
+                  purchases={purchases}
                   uploadLoading={uploadLoading}
                   uploadProgress={uploadProgress}
                   uploadResult={uploadResult}
@@ -808,6 +940,15 @@ export default function App() {
                 <UploadView
                   uploadFile={uploadFile}
                   setUploadFile={setUploadFile}
+                  additionalUploadFile={additionalUploadFile}
+                  setAdditionalUploadFile={setAdditionalUploadFile}
+                  additionalWarrantyMonths={additionalWarrantyMonths}
+                  setAdditionalWarrantyMonths={setAdditionalWarrantyMonths}
+                  additionalWarrantyNotes={additionalWarrantyNotes}
+                  setAdditionalWarrantyNotes={setAdditionalWarrantyNotes}
+                  selectedUploadPurchaseId={selectedUploadPurchaseId}
+                  setSelectedUploadPurchaseId={setSelectedUploadPurchaseId}
+                  purchases={purchases}
                   uploadLoading={uploadLoading}
                   uploadProgress={uploadProgress}
                   uploadResult={uploadResult}

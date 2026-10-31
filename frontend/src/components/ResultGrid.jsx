@@ -1,10 +1,13 @@
 import { motion } from 'motion/react'
 import { ConfidenceBadge } from './ui'
-import { fmt, fmtDate, fmtPrice } from '../lib/format'
+import { fmt, fmtDate, fmtPrice, parseAdditionalWarranty } from '../lib/format'
 import Icon from './Icon'
 
 export default function ResultGrid({ result, ocrUsed }) {
   if (!result) return null
+
+  const { additionalWarranty } = parseAdditionalWarranty(result.source_snippet)
+  const extDetails = result.additional_warranty_details || additionalWarranty
 
   const items = [
     { label: 'Product Name', value: fmt(result.product_name) },
@@ -13,7 +16,7 @@ export default function ResultGrid({ result, ocrUsed }) {
     { label: 'Purchase Date', value: fmtDate(result.purchase_date) },
     { label: 'Amount Paid', value: fmtPrice(result.price), highlight: true },
     {
-      label: 'Warranty Period',
+      label: 'Total Warranty Period',
       value: result.warranty_period_months ? `${result.warranty_period_months} months` : '—',
     },
     {
@@ -21,6 +24,27 @@ export default function ResultGrid({ result, ocrUsed }) {
       value: result.return_window_days ? `${result.return_window_days} days` : '—',
     },
   ]
+
+  if (result.additional_warranty_months || extDetails) {
+    items.push({
+      label: 'Additional / Extended Warranty',
+      value: extDetails || `+${result.additional_warranty_months} months`,
+      highlight: true,
+    })
+  }
+
+  if (result.manufacturer_doc_name || result.additional_doc_name) {
+    const docList = [
+      result.manufacturer_doc_name ? `Standard: ${result.manufacturer_doc_name}` : null,
+      result.additional_doc_name ? `Additional: ${result.additional_doc_name}` : null,
+    ]
+      .filter(Boolean)
+      .join('\n')
+    items.push({
+      label: 'Uploaded Documents',
+      value: docList,
+    })
+  }
 
   return (
     <motion.div

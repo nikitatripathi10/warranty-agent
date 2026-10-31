@@ -26,7 +26,22 @@ class ExtractionResultSchema(BaseModel):
     purchase_date: Optional[date] = None
     price: Optional[Decimal] = None
     warranty_period_months: Optional[int] = Field(
-        None, description="Warranty length in months if stated"
+        None, description="Total warranty length in months (standard + additional)"
+    )
+    standard_warranty_months: Optional[int] = Field(
+        None, description="Manufacturer / standard warranty length in months"
+    )
+    additional_warranty_months: Optional[int] = Field(
+        None, description="Additional / extended warranty length in months"
+    )
+    additional_warranty_details: Optional[str] = Field(
+        None, description="Additional / extended warranty details or manual entry notes"
+    )
+    manufacturer_doc_name: Optional[str] = Field(
+        None, description="Uploaded manufacturer/standard warranty document filename"
+    )
+    additional_doc_name: Optional[str] = Field(
+        None, description="Uploaded additional/extended warranty document filename"
     )
     return_window_days: Optional[int] = Field(
         None, description="Return window in days if stated"
@@ -95,6 +110,7 @@ class PurchaseEditRequest(BaseModel):
     # Warranty period overrides
     warranty_end_date: Optional[date] = None
     return_window_end_date: Optional[date] = None
+    source_snippet: Optional[str] = Field(None, max_length=2000)
 
 
 class PurchasesListResponse(BaseModel):

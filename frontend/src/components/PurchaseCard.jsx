@@ -1,10 +1,11 @@
 import { motion } from 'motion/react'
-import { fmt, fmtDate, fmtPrice, daysUntil, urgencyColor, urgencyLabel } from '../lib/format'
+import { fmt, fmtDate, fmtPrice, daysUntil, urgencyColor, urgencyLabel, parseAdditionalWarranty } from '../lib/format'
 import { ConfidenceBadge, UrgencyChip, GlassCard } from './ui'
 import Icon from './Icon'
 
 export default function PurchaseCard({ purchase, onSelect, onDelete }) {
   const wp = purchase.warranty_period
+  const { additionalWarranty } = parseAdditionalWarranty(wp?.source_snippet)
   const returnDays = wp?.return_window_end_date ? daysUntil(wp.return_window_end_date) : null
   const warrantyDays = wp?.warranty_end_date ? daysUntil(wp.warranty_end_date) : null
   const urgentDays = [returnDays, warrantyDays].filter(d => d !== null)
@@ -106,11 +107,18 @@ export default function PurchaseCard({ purchase, onSelect, onDelete }) {
                 <UrgencyChip days={warrantyDays} label={urgencyLabel(warrantyDays, 'Warranty')} />
               )}
             </div>
-            {wp?.is_estimated && (
-              <span className="rounded bg-violet-glow/15 px-1.5 py-0.5 text-[0.65rem] font-medium text-violet-300 ring-1 ring-violet-glow/30">
-                Estimated
-              </span>
-            )}
+            <div className="flex flex-wrap items-center gap-1.5">
+              {additionalWarranty && (
+                <span className="rounded bg-cyan-glow/15 px-1.5 py-0.5 text-[0.65rem] font-medium text-cyan-300 ring-1 ring-cyan-glow/30">
+                  + Extended Warranty
+                </span>
+              )}
+              {wp?.is_estimated && (
+                <span className="rounded bg-violet-glow/15 px-1.5 py-0.5 text-[0.65rem] font-medium text-violet-300 ring-1 ring-violet-glow/30">
+                  Estimated
+                </span>
+              )}
+            </div>
           </div>
         </div>
       </GlassCard>

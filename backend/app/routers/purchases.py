@@ -275,7 +275,11 @@ def edit_purchase(
 
     # -- Update warranty period if overrides provided --
     warranty_changed: list[str] = []
-    if body.warranty_end_date is not None or body.return_window_end_date is not None:
+    if (
+        body.warranty_end_date is not None
+        or body.return_window_end_date is not None
+        or body.source_snippet is not None
+    ):
         wp = purchase.warranty_period
         if wp is None:
             # Create a new warranty period row if it doesn't exist
@@ -296,6 +300,10 @@ def edit_purchase(
         if body.return_window_end_date is not None:
             wp.return_window_end_date = body.return_window_end_date
             warranty_changed.append("return_window_end_date")
+
+        if body.source_snippet is not None:
+            wp.source_snippet = body.source_snippet.strip() or wp.source_snippet
+            warranty_changed.append("source_snippet")
 
     all_changed = changed + warranty_changed
 
