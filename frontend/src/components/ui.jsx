@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import SpotlightCard from './reactbits/SpotlightCard'
 import { BorderBeam } from './magicui/border-beam'
 import { cn } from '../lib/utils'
+import { formatOwnerName, ownerInitials } from '../lib/format'
 import { useThemeValue } from '../lib/theme-context'
 import Icon from './Icon'
 
@@ -204,14 +205,18 @@ export function StatusBadge({ status }) {
   )
 }
 
-export function UserChip({ email }) {
-  const initials = email ? email.slice(0, 2).toUpperCase() : '?'
+export function UserChip({ email, name = '' }) {
+  const displayName = formatOwnerName(email, name)
+  const initials = ownerInitials(email, name)
   return (
-    <span className="glass inline-flex max-w-full items-center gap-2.5 rounded-full py-1 pr-4 pl-1 text-sm text-muted">
+    <span
+      title={email}
+      className="glass inline-flex max-w-full items-center gap-2.5 rounded-full py-1 pr-4 pl-1 text-sm text-muted"
+    >
       <span className="grid size-7 shrink-0 place-items-center rounded-full bg-linear-to-br from-violet-glow to-cyan-glow text-[0.65rem] font-bold text-white">
         {initials}
       </span>
-      <span className="truncate">{email}</span>
+      <span className="truncate font-medium text-fg">{displayName}</span>
     </span>
   )
 }

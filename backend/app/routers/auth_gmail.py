@@ -149,11 +149,13 @@ def gmail_callback(
             detail=f"Failed to exchange authorization code for tokens. Reason: {exc}",
         ) from exc
 
-    # -- Fetch user's Gmail address from Google --
+    # -- Fetch user's Gmail address & profile name from Google --
+    full_name: str = ""
     try:
         user_info_service = build("oauth2", "v2", credentials=credentials, cache_discovery=False)
         user_info = user_info_service.userinfo().get().execute()
         email: str = user_info.get("email", "").lower().strip()
+        full_name = (user_info.get("name") or user_info.get("given_name") or "").strip()
         if not email:
             raise ValueError("Google did not return an email address")
     except Exception as exc:
@@ -210,8 +212,11 @@ def gmail_callback(
     logger.info("OAuth flow complete for user %s (id=%s)", email, user.id)
     
     frontend_origin = os.getenv("FRONTEND_ORIGIN", "http://localhost:5173").strip()
-    redirect_url = f"{frontend_origin}/?" + urlencode({
+    params = {
         "user_id": str(user.id),
-        "email": user.email
-    })
+        "email": user.email,
+    }
+    if full_name:
+        params["name"] = full_name
+    redirect_url = f"{frontend_origin}/?" + urlencode(params)
     return RedirectResponse(url=redirect_url)

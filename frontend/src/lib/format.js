@@ -73,6 +73,50 @@ export function greeting() {
   return 'Good evening'
 }
 
+export function formatOwnerName(email, explicitName = '') {
+  const trimmedExplicit = String(explicitName || '').trim()
+  if (trimmedExplicit) {
+    return trimmedExplicit
+      .split(/\s+/)
+      .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+      .join(' ')
+  }
+  const rawEmail = String(email || '').trim()
+  if (!rawEmail) return 'User'
+
+  const localPart = rawEmail.split('@')[0] || ''
+  // Strip embedded/trailing dates or number sequences (including a single trailing suffix letter like '10032007s')
+  const cleaned = localPart
+    .replace(/\d+[a-zA-Z]?/g, ' ')
+    .replace(/[._\-+]+/g, ' ')
+    .trim()
+
+  const parts = cleaned
+    .split(/\s+/)
+    .map(p => p.trim())
+    .filter(p => p.length > 0)
+
+  if (parts.length === 0) {
+    return localPart || 'User'
+  }
+
+  return parts
+    .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(' ')
+}
+
+export function ownerInitials(email, explicitName = '') {
+  const owner = formatOwnerName(email, explicitName)
+  const words = owner.split(/\s+/).filter(Boolean)
+  if (words.length >= 2) {
+    return (words[0][0] + words[words.length - 1][0]).toUpperCase()
+  }
+  if (words.length === 1 && words[0].length >= 2) {
+    return words[0].slice(0, 2).toUpperCase()
+  }
+  return '?'
+}
+
 export function parseAdditionalWarranty(snippet) {
   if (!snippet || typeof snippet !== 'string') {
     return { additionalWarranty: null, cleanSnippet: snippet || '' }

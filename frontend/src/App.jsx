@@ -156,6 +156,7 @@ export default function App() {
     return stored
   })
   const [userEmail, setUserEmail] = useState(() => localStorage.getItem('wrd_user_email') || '')
+  const [userName, setUserName] = useState(() => localStorage.getItem('wrd_user_name') || '')
   const isConnected = Boolean(userId && userEmail)
 
   // ── Theme ───────────────────────────────────────────────────────────────────
@@ -251,11 +252,16 @@ export default function App() {
     const params = new URLSearchParams(window.location.search)
     const cbUserId = params.get('user_id')
     const cbEmail = params.get('email')
+    const cbName = params.get('name')
     if (cbUserId && cbEmail) {
       localStorage.setItem('wrd_user_id', cbUserId)
       localStorage.setItem('wrd_user_email', cbEmail)
       setUserId(cbUserId)
       setUserEmail(cbEmail)
+      if (cbName) {
+        localStorage.setItem('wrd_user_name', cbName)
+        setUserName(cbName)
+      }
       window.history.replaceState({}, '', '/')
       setOnboardStep(1)
     }
@@ -693,8 +699,10 @@ export default function App() {
   function handleDisconnect() {
     localStorage.removeItem('wrd_user_id')
     localStorage.removeItem('wrd_user_email')
+    localStorage.removeItem('wrd_user_name')
     setUserId('')
     setUserEmail('')
+    setUserName('')
     setPurchases([])
     setAlerts([])
     setSelectedPurchase(null)
@@ -870,6 +878,7 @@ export default function App() {
               {screen === 'dashboard' && (
                 <DashboardView
                   userEmail={userEmail}
+                  userName={userName}
                   activePalette={activePalette}
                   purchases={purchases}
                   purchasesLoading={purchasesLoading}

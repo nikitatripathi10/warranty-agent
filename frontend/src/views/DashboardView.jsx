@@ -8,11 +8,12 @@ import WarrantyTimeline from '../components/WarrantyTimeline'
 import PurchaseCard from '../components/PurchaseCard'
 import PurchaseListItem from '../components/PurchaseListItem'
 import { Donut, BarChart, HBars, Sparkline } from '../components/charts'
-import { daysUntil, fmtCompactINR, greeting } from '../lib/format'
+import { daysUntil, fmtCompactINR, greeting, formatOwnerName } from '../lib/format'
 import Icon from '../components/Icon'
 
 export default function DashboardView({
   userEmail,
+  userName = '',
   activePalette = 'cyberpunk',
   purchases,
   purchasesLoading,
@@ -186,7 +187,7 @@ export default function DashboardView({
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="font-display text-2xl font-bold tracking-tight text-fg sm:text-3xl">
-            {greeting()}, <span className="text-aurora">{userEmail.split('@')[0]}</span>
+            {greeting()}, <span className="text-aurora">{formatOwnerName(userEmail, userName)}</span>
           </h2>
           <p className="mt-1 text-xs text-muted">
             Warranty Radar is actively monitoring your connected accounts &amp; invoices.
