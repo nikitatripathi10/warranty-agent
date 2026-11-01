@@ -87,7 +87,9 @@ export default function LandingView({
   )
 
   const handleConnectGmail = () => {
-    window.location.href = `${apiBase}/auth/gmail/connect`
+    const origin = typeof window !== 'undefined' ? window.location.origin : ''
+    const returnParam = origin ? `?return_url=${encodeURIComponent(origin)}` : ''
+    window.location.href = `${apiBase}/auth/gmail/connect${returnParam}`
   }
 
   return (
@@ -223,7 +225,7 @@ export default function LandingView({
 
               <a
                 id="btn-connect-gmail"
-                href={`${apiBase}/auth/gmail/connect`}
+                href={`${apiBase}/auth/gmail/connect${typeof window !== 'undefined' && window.location.origin ? `?return_url=${encodeURIComponent(window.location.origin)}` : ''}`}
                 className="flex w-full items-center justify-center gap-2.5 rounded-xl border border-indigo-400/40 bg-linear-to-r from-indigo-500 to-violet-600 px-6 py-3.5 text-sm font-semibold text-white shadow-[0_8px_24px_-6px_rgba(99,102,241,0.55)] transition hover:from-indigo-400 hover:to-violet-500"
               >
                 <svg width="18" height="18" viewBox="0 0 48 48" style={{ flexShrink: 0 }}>

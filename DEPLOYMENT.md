@@ -114,19 +114,31 @@ If you prefer Vercel:
 
 ---
 
-## 4. Google Cloud OAuth Setup (Production)
+## 4. Google Cloud OAuth Setup (Allowing Any User / Production)
 
-1. Go to [console.cloud.google.com](https://console.cloud.google.com) → APIs & Services → Credentials
-2. Edit your OAuth 2.0 Web Application credential
-3. Add to **Authorized redirect URIs**:
+By default, Google sets new OAuth projects to **"Testing"** mode. In Testing mode, Google restricts access **strictly to accounts listed in Test users**. To allow anyone to connect with their own email:
+
+### Step 1: Set OAuth Consent Screen to Production
+1. Go to [console.cloud.google.com](https://console.cloud.google.com) → **APIs & Services → OAuth consent screen**.
+2. Under **Publishing status**, click **"PUBLISH APP"** and confirm.
+   - Once published as an External app, **any Google user in the world** can sign in.
+   - *Note on verification:* Because `gmail.readonly` is a sensitive scope, Google will show an *"Unverified app"* warning screen. Users simply click **"Advanced" → "Go to Warranty Radar (unsafe)"** and check the box to grant Gmail read access.
+3. *Alternative (instant without the unverified screen for select testers):* Keep it in Testing mode and add your friends/evaluators under **Audience → Test users → + ADD USERS**.
+
+### Step 2: Configure Authorized Redirect URIs
+1. In Google Cloud Console → **APIs & Services → Credentials** → click your OAuth 2.0 Client ID.
+2. Under **Authorized redirect URIs**, ensure you have:
    ```
-   https://warranty-radar-api.up.railway.app/auth/gmail/callback
+   https://warranty-agent.onrender.com/auth/gmail/callback
+   http://localhost:8000/auth/gmail/callback
    ```
-4. Add to **Authorized JavaScript origins**:
+3. Under **Authorized JavaScript origins**, add:
    ```
-   https://your-app.netlify.app
+   https://warranty-agent-nikita-54bd.vercel.app
+   https://venerable-boba-fb4868.netlify.app
+   http://localhost:5173
    ```
-5. Update `GOOGLE_REDIRECT_URI` in Railway to match exactly
+4. Click **Save**.
 
 ---
 

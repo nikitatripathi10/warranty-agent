@@ -711,7 +711,9 @@ export default function App() {
   }
 
   function handleConnectGmail() {
-    window.location.href = `${API_BASE}/auth/gmail/connect`
+    const origin = typeof window !== 'undefined' ? window.location.origin : ''
+    const returnParam = origin ? `?return_url=${encodeURIComponent(origin)}` : ''
+    window.location.href = `${API_BASE}/auth/gmail/connect${returnParam}`
   }
 
   function openItemDetail(purchase) {

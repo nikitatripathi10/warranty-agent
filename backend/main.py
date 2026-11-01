@@ -65,10 +65,19 @@ app = FastAPI(
 
 # ── CORS ─────────────────────────────────────────────────────────────────────
 
-_frontend_origin = os.getenv("FRONTEND_ORIGIN", "http://localhost:5173")
-_extra_origins = os.getenv("EXTRA_FRONTEND_ORIGINS", "")
+_default_origins = [
+    "http://localhost:5173",
+    "http://localhost:3000",
+    "https://warranty-agent-nikita-54bd.vercel.app",
+    "https://venerable-boba-fb4868.netlify.app",
+]
 
-_allowed_origins = [o.rstrip("/") for o in [_frontend_origin] if o]
+_frontend_origin = os.getenv("FRONTEND_ORIGIN", "").strip()
+_extra_origins = os.getenv("EXTRA_FRONTEND_ORIGINS", "").strip()
+
+_allowed_origins = list(_default_origins)
+if _frontend_origin:
+    _allowed_origins.append(_frontend_origin.rstrip("/"))
 if _extra_origins:
     _allowed_origins.extend(
         o.strip().rstrip("/") for o in _extra_origins.split(",") if o.strip()
@@ -76,8 +85,8 @@ if _extra_origins:
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=_allowed_origins,
-    allow_origin_regex=r"https://.*\.vercel\.app",
+    allow_origins=list(set(_allowed_origins)),
+    allow_origin_regex=r"^https://.*(\.vercel\.app|\.netlify\.app)(:\d+)?$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
