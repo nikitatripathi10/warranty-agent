@@ -72,7 +72,11 @@ export default function LandingView({
   // Dashboard summary count
   purchasesCount = 0,
   alertsCount = 0,
+  onDirectEmailConnect,
 }) {
+  const [directEmail, setDirectEmail] = useState('')
+  const [directEmailLoading, setDirectEmailLoading] = useState(false)
+  const [directEmailError, setDirectEmailError] = useState(null)
   const [dragoverStd, setDragoverStd] = useState(false)
   const [dragoverAdd, setDragoverAdd] = useState(false)
   const stdFileInputRef = useRef(null)
@@ -90,6 +94,20 @@ export default function LandingView({
     const origin = typeof window !== 'undefined' ? window.location.origin : ''
     const returnParam = origin ? `?return_url=${encodeURIComponent(origin)}` : ''
     window.location.href = `${apiBase}/auth/gmail/connect${returnParam}`
+  }
+
+  const handleDirectEmailSubmit = async (e) => {
+    e.preventDefault()
+    if (!directEmail.trim() || directEmailLoading || !onDirectEmailConnect) return
+    setDirectEmailLoading(true)
+    setDirectEmailError(null)
+    try {
+      await onDirectEmailConnect(directEmail.trim())
+    } catch (err) {
+      setDirectEmailError(err.message || 'Failed to connect. Please try again.')
+    } finally {
+      setDirectEmailLoading(false)
+    }
   }
 
   return (
@@ -236,6 +254,44 @@ export default function LandingView({
                 </svg>
                 <span>Connect with Google</span>
               </a>
+
+              {/* Seamless Alternative: Direct Email Workspace Sign-in */}
+              <div className="relative my-1 flex items-center justify-center">
+                <div className="w-full border-t border-line/60" />
+                <span className="absolute bg-[#0a0c1f] light:bg-white px-3 text-[0.68rem] font-semibold uppercase tracking-wider text-subtle">
+                  or enter any email
+                </span>
+              </div>
+
+              <form onSubmit={handleDirectEmailSubmit} className="space-y-2">
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <input
+                    type="email"
+                    required
+                    value={directEmail}
+                    onChange={e => setDirectEmail(e.target.value)}
+                    placeholder="Enter your email (e.g. name@gmail.com)"
+                    className="flex-1 rounded-xl border border-line bg-field px-3.5 py-2.5 text-xs sm:text-sm text-fg placeholder:text-subtle outline-none transition focus:border-cyan-glow/70 focus:ring-2 focus:ring-cyan-glow/15"
+                  />
+                  <Button
+                    type="submit"
+                    variant="secondary"
+                    size="md"
+                    disabled={directEmailLoading || !directEmail.trim()}
+                    className="whitespace-nowrap"
+                  >
+                    {directEmailLoading ? <Spinner size={14} /> : <span>Open Workspace →</span>}
+                  </Button>
+                </div>
+                {directEmailError && (
+                  <Notice tone="error" className="py-2 text-xs">
+                    {directEmailError}
+                  </Notice>
+                )}
+                <p className="text-[0.7rem] text-subtle">
+                  Instant sign-in for any email address: upload receipts, track warranties, and view alerts without OAuth verification.
+                </p>
+              </form>
             </div>
           ) : (
             <div className="space-y-4">

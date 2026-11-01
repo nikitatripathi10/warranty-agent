@@ -31,7 +31,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import User
-from app.schemas import OAuthCallbackResponse
+from app.schemas import EmailConnectRequest, EmailConnectResponse, OAuthCallbackResponse
 from app.services.encryption import encrypt_token
 
 load_dotenv()
@@ -285,3 +285,54 @@ def gmail_callback(
     redirect_url = f"{target_origin}/?" + urlencode(params)
     logger.info("Redirecting authenticated user %s to %s", email, redirect_url)
     return RedirectResponse(url=redirect_url)
+
+
+@router.post(
+    "/email-connect",
+    response_model=EmailConnectResponse,
+    summary="Directly connect or sign in with any email address",
+)
+def email_connect(
+    body: EmailConnectRequest,
+    db: Session = Depends(get_db),
+) -> EmailConnectResponse:
+    """
+    Allows any user to connect with their email address without requiring
+    Google OAuth consent. Provides an isolated workspace with immediate
+    access to document uploads, manual warranty tracking, and AI query assistance.
+    """
+    import re
+    email = body.email.strip().lower()
+    if not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", email):
+        raise HTTPException(status_code=400, detail="Please enter a valid email address.")
+
+    user = db.query(User).filter(User.email == email).first()
+    if user is None:
+        user = User(email=email)
+        db.add(user)
+        try:
+            db.commit()
+            db.refresh(user)
+            logger.info("Created new user via direct email-connect: %s (id=%s)", email, user.id)
+        except Exception as exc:
+            db.rollback()
+            logger.error("DB error creating user for %s: %s", email, exc)
+            raise HTTPException(status_code=500, detail="Database error — please try again.") from exc
+    else:
+        logger.info("Existing user accessed via direct email-connect: %s (id=%s)", email, user.id)
+
+    name = (body.name or "").strip()
+    if not name:
+        local_part = email.split("@")[0]
+        cleaned = re.sub(r"\d+[a-zA-Z]?", " ", local_part)
+        cleaned = re.sub(r"[._\-+]+", " ", cleaned).strip()
+        words = [w.capitalize() for w in cleaned.split() if w]
+        name = " ".join(words) if words else local_part.capitalize()
+
+    return EmailConnectResponse(
+        user_id=user.id,
+        email=user.email,
+        name=name,
+        has_gmail_connected=bool(user.google_oauth_token_encrypted),
+        message="Workspace ready",
+    )

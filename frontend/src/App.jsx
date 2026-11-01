@@ -707,7 +707,31 @@ export default function App() {
     setAlerts([])
     setSelectedPurchase(null)
     setScreen('connect')
-    addToast('Signed out. Connect your Google account to continue.', 'info')
+    addToast('Signed out. Enter your email or connect Google to continue.', 'info')
+  }
+
+  async function handleDirectEmailConnect(email) {
+    if (!email) return
+    const res = await fetch(`${API_BASE}/auth/gmail/email-connect`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    })
+    const data = await res.json()
+    if (!res.ok) {
+      throw new Error(data.detail || 'Could not connect email workspace.')
+    }
+    localStorage.setItem('wrd_user_id', data.user_id)
+    localStorage.setItem('wrd_user_email', data.email)
+    localStorage.setItem('wrd_user_name', data.name)
+    setUserId(data.user_id)
+    setUserEmail(data.email)
+    setUserName(data.name)
+    setPurchases([])
+    setAlerts([])
+    setSelectedPurchase(null)
+    setScreen('dashboard')
+    addToast(`Connected to workspace for ${data.email}`, 'success')
   }
 
   function handleConnectGmail() {
@@ -768,6 +792,7 @@ export default function App() {
               apiBase={API_BASE}
               isConnected={false}
               userEmail=""
+              onDirectEmailConnect={handleDirectEmailConnect}
               onDisconnect={handleDisconnect}
               onboardStep={onboardStep}
               activePalette={activePalette}
@@ -842,6 +867,7 @@ export default function App() {
                   apiBase={API_BASE}
                   isConnected={isConnected}
                   userEmail={userEmail}
+                  onDirectEmailConnect={handleDirectEmailConnect}
                   onDisconnect={handleDisconnect}
                   onNavigate={setScreen}
                   onboardStep={onboardStep}

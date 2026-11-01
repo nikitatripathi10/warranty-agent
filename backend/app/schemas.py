@@ -151,6 +151,23 @@ class OAuthCallbackResponse(BaseModel):
     message: str = "Gmail connected successfully"
 
 
+class EmailConnectRequest(BaseModel):
+    """Direct email sign-in or connection request."""
+
+    email: str = Field(..., min_length=3, max_length=255, description="User's email address")
+    name: Optional[str] = Field(None, max_length=150, description="Optional display name")
+
+
+class EmailConnectResponse(BaseModel):
+    """Returned after direct email sign-in or connection."""
+
+    user_id: uuid.UUID
+    email: str
+    name: str
+    has_gmail_connected: bool
+    message: str = "Connected successfully"
+
+
 # ── Extraction test schema ────────────────────────────────────────────────────
 
 class ExtractionTestRequest(BaseModel):
