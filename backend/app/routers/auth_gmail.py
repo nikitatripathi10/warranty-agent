@@ -60,6 +60,11 @@ _SAFE_PRODUCTION_ORIGINS = {
     "https://venerable-boba-fb4868.netlify.app",
 }
 
+# Public, unprotected frontend. Used when the OAuth state carries no usable
+# origin (e.g. the user hit /auth/gmail/connect directly). The Vercel URL is
+# deliberately not the default because Deployment Protection blocks visitors.
+_DEFAULT_FRONTEND_ORIGIN = "https://venerable-boba-fb4868.netlify.app"
+
 
 def _normalize_origin(origin: str) -> str | None:
     """Return a canonical scheme://host[:port] origin, or None if invalid."""
@@ -107,6 +112,14 @@ def _is_safe_origin(origin: str) -> bool:
     if host in {"localhost", "127.0.0.1"}:
         return True
     return normalized in _ALLOWED_ORIGINS
+
+
+def _fallback_origin() -> str:
+    """Safe default frontend when the OAuth state carries no usable origin."""
+    configured = _normalize_origin(os.getenv("FRONTEND_ORIGIN", ""))
+    if configured and _is_safe_origin(configured):
+        return configured
+    return _DEFAULT_FRONTEND_ORIGIN
 
 
 def _encode_state(origin: str | None) -> str:
@@ -305,12 +318,7 @@ def gmail_callback(
     logger.info("OAuth flow complete for user %s (id=%s)", email, user.id)
 
     # Return user to the exact frontend origin they initiated auth from (Vercel, Netlify, or local)
-    target_origin = _decode_state(state)
-    if not target_origin:
-        target_origin = (
-            os.getenv("FRONTEND_ORIGIN")
-            or "https://warranty-agent-nikita-54bd.vercel.app"
-        ).strip().rstrip("/")
+    target_origin = _decode_state(state) or _fallback_origin()
 
     params = {
         "user_id": str(user.id),

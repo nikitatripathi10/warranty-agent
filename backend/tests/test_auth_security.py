@@ -8,7 +8,12 @@ import pytest
 from fastapi import HTTPException
 
 from app.models import User
-from app.routers.auth_gmail import _is_safe_origin, email_connect
+from app.routers.auth_gmail import (
+    _DEFAULT_FRONTEND_ORIGIN,
+    _fallback_origin,
+    _is_safe_origin,
+    email_connect,
+)
 from app.schemas import EmailConnectRequest
 
 
@@ -44,6 +49,22 @@ def test_allowed_oauth_origins(origin: str) -> None:
 )
 def test_rejected_oauth_origins(origin: str) -> None:
     assert _is_safe_origin(origin) is False
+
+
+def test_fallback_origin_defaults_to_public_netlify(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("FRONTEND_ORIGIN", raising=False)
+    assert _fallback_origin() == _DEFAULT_FRONTEND_ORIGIN
+    assert _DEFAULT_FRONTEND_ORIGIN == "https://venerable-boba-fb4868.netlify.app"
+
+
+def test_fallback_origin_uses_configured_safe_origin(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("FRONTEND_ORIGIN", "http://localhost:5173")
+    assert _fallback_origin() == "http://localhost:5173"
+
+
+def test_fallback_origin_ignores_unsafe_configuration(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("FRONTEND_ORIGIN", "https://evil.example.com")
+    assert _fallback_origin() == _DEFAULT_FRONTEND_ORIGIN
 
 
 # ── Direct email sign-in ──────────────────────────────────────────────────────
