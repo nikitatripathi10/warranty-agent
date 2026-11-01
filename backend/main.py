@@ -85,8 +85,9 @@ if _extra_origins:
 
 app.add_middleware(
     CORSMiddleware,
+    # Exact origins only. A wildcard *.vercel.app / *.netlify.app rule would let
+    # anyone deploy a lookalike site and call the API with a stolen workspace token.
     allow_origins=list(set(_allowed_origins)),
-    allow_origin_regex=r"^https://.*(\.vercel\.app|\.netlify\.app)(:\d+)?$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

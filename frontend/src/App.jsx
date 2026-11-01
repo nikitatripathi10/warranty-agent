@@ -69,6 +69,28 @@ function isGenuinePurchase(p) {
   return true
 }
 
+function workspaceStorageKey(email) {
+  return `wrd_workspace_${String(email || '').trim().toLowerCase()}`
+}
+
+function getWorkspaceId(email) {
+  if (!email) return ''
+  try {
+    return localStorage.getItem(workspaceStorageKey(email)) || ''
+  } catch {
+    return ''
+  }
+}
+
+function rememberWorkspace(email, id) {
+  if (!email || !id) return
+  try {
+    localStorage.setItem(workspaceStorageKey(email), id)
+  } catch {
+    /* ignore storage errors */
+  }
+}
+
 function getDeletedPurchaseIds(userId) {
   if (!userId) return new Set()
   try {
@@ -158,6 +180,12 @@ export default function App() {
   const [userEmail, setUserEmail] = useState(() => localStorage.getItem('wrd_user_email') || '')
   const [userName, setUserName] = useState(() => localStorage.getItem('wrd_user_name') || '')
   const isConnected = Boolean(userId && userEmail)
+
+  // Remember this browser's workspace token so signing out and back in with the
+  // same email stays seamless, without letting other browsers claim the workspace.
+  useEffect(() => {
+    if (userId && userEmail) rememberWorkspace(userEmail, userId)
+  }, [userId, userEmail])
 
   // ── Theme ───────────────────────────────────────────────────────────────────
   const [theme, toggleTheme] = useTheme()
@@ -256,6 +284,7 @@ export default function App() {
     if (cbUserId && cbEmail) {
       localStorage.setItem('wrd_user_id', cbUserId)
       localStorage.setItem('wrd_user_email', cbEmail)
+      rememberWorkspace(cbEmail, cbUserId)
       setUserId(cbUserId)
       setUserEmail(cbEmail)
       if (cbName) {
@@ -712,15 +741,17 @@ export default function App() {
 
   async function handleDirectEmailConnect(email) {
     if (!email) return
+    const workspaceId = getWorkspaceId(email)
     const res = await fetch(`${API_BASE}/auth/gmail/email-connect`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email }),
+      body: JSON.stringify({ email, user_id: workspaceId || undefined }),
     })
     const data = await res.json()
     if (!res.ok) {
       throw new Error(data.detail || 'Could not connect email workspace.')
     }
+    rememberWorkspace(data.email, data.user_id)
     localStorage.setItem('wrd_user_id', data.user_id)
     localStorage.setItem('wrd_user_email', data.email)
     localStorage.setItem('wrd_user_name', data.name)

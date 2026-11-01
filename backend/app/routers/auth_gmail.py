@@ -52,21 +52,61 @@ _GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
 _GOOGLE_REDIRECT_URI  = os.getenv("GOOGLE_REDIRECT_URI", "http://localhost:8000/auth/gmail/callback").strip()
 
 
+# Exact origins allowed to receive the post-OAuth redirect. Do NOT use suffix or
+# substring matching here: an attacker can deploy https://vercel.app.evil.com or
+# https://anything.vercel.app and steal the workspace token from the redirect.
+_SAFE_PRODUCTION_ORIGINS = {
+    "https://warranty-agent-nikita-54bd.vercel.app",
+    "https://venerable-boba-fb4868.netlify.app",
+}
+
+
+def _normalize_origin(origin: str) -> str | None:
+    """Return a canonical scheme://host[:port] origin, or None if invalid."""
+    if not origin or not origin.strip():
+        return None
+    try:
+        parsed = urlparse(origin.strip())
+        if parsed.scheme not in {"http", "https"}:
+            return None
+        if parsed.username or parsed.password:
+            return None
+        if parsed.path not in {"", "/"} or parsed.params or parsed.query or parsed.fragment:
+            return None
+        host = (parsed.hostname or "").strip().lower()
+        if not host:
+            return None
+        port = parsed.port
+    except (TypeError, ValueError):
+        return None
+    netloc = host if port is None else f"{host}:{port}"
+    return f"{parsed.scheme}://{netloc}"
+
+
+def _configured_origins() -> set[str]:
+    """Build the exact allowlist from known deployments + environment overrides."""
+    origins = set(_SAFE_PRODUCTION_ORIGINS)
+    for variable in ("FRONTEND_ORIGIN", "EXTRA_FRONTEND_ORIGINS"):
+        raw = os.getenv(variable, "")
+        for candidate in raw.split(","):
+            normalized = _normalize_origin(candidate)
+            if normalized:
+                origins.add(normalized)
+    return origins
+
+
+_ALLOWED_ORIGINS = _configured_origins()
+
+
 def _is_safe_origin(origin: str) -> bool:
-    """Validate that the redirect target is an allowed safe frontend domain."""
-    if not origin:
+    """Validate that the redirect target is an explicitly allowed frontend origin."""
+    normalized = _normalize_origin(origin)
+    if not normalized:
         return False
-    o = origin.lower().rstrip("/")
-    if (
-        o.startswith("http://localhost:")
-        or o.startswith("http://127.0.0.1:")
-        or o.endswith(".vercel.app")
-        or o.endswith(".netlify.app")
-        or "vercel.app" in o
-        or "netlify.app" in o
-    ):
+    host = (urlparse(normalized).hostname or "").lower()
+    if host in {"localhost", "127.0.0.1"}:
         return True
-    return False
+    return normalized in _ALLOWED_ORIGINS
 
 
 def _encode_state(origin: str | None) -> str:
@@ -279,7 +319,8 @@ def gmail_callback(
     if full_name:
         params["name"] = full_name
     redirect_url = f"{target_origin}/?" + urlencode(params)
-    logger.info("Redirecting authenticated user %s to %s", email, redirect_url)
+    # Never log the full redirect URL: it contains the workspace token.
+    logger.info("Redirecting authenticated user %s to %s", email, target_origin)
     return RedirectResponse(url=redirect_url)
 
 
@@ -293,9 +334,13 @@ def email_connect(
     db: Session = Depends(get_db),
 ) -> EmailConnectResponse:
     """
-    Allows any user to connect with their email address without requiring
-    Google OAuth consent. Provides an isolated workspace with immediate
-    access to document uploads, manual warranty tracking, and AI query assistance.
+    Create a new workspace for an unused email, or reopen an existing workspace
+    only when the caller presents the workspace token issued to that browser.
+
+    Email alone is never enough to reopen an existing workspace: otherwise anyone
+    who knows a user's address could read their receipts and warranty records.
+    Users who lost their browser token can recover through Google sign-in, which
+    proves ownership of the email address.
     """
     import re
     email = body.email.strip().lower()
@@ -315,7 +360,20 @@ def email_connect(
             logger.error("DB error creating user for %s: %s", email, exc)
             raise HTTPException(status_code=500, detail="Database error — please try again.") from exc
     else:
-        logger.info("Existing user accessed via direct email-connect: %s (id=%s)", email, user.id)
+        if body.user_id is None or body.user_id != user.id:
+            logger.warning(
+                "Blocked direct email sign-in for existing workspace %s "
+                "(workspace token missing or mismatched)",
+                email,
+            )
+            raise HTTPException(
+                status_code=403,
+                detail=(
+                    "This email already has a workspace. Open it from the browser where "
+                    "you created it, or use “Connect with Google” to verify ownership."
+                ),
+            )
+        logger.info("Existing user reopened via direct email-connect: %s (id=%s)", email, user.id)
 
     name = (body.name or "").strip()
     if not name:

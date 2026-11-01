@@ -156,6 +156,13 @@ class EmailConnectRequest(BaseModel):
 
     email: str = Field(..., min_length=3, max_length=255, description="User's email address")
     name: Optional[str] = Field(None, max_length=150, description="Optional display name")
+    user_id: Optional[uuid.UUID] = Field(
+        None,
+        description=(
+            "Workspace token previously issued to this browser. Required to reopen "
+            "an existing workspace without Google verification."
+        ),
+    )
 
 
 class EmailConnectResponse(BaseModel):
