@@ -153,8 +153,10 @@ def get_category_fallback(
         brand: Brand from extraction (may be None).
 
     Returns:
-        Tuple of (category_name, warranty_months, return_window_days) if a
-        category is detected, or None if no match found.
+        Tuple of (category_name, warranty_months, return_window_days). A known
+        category wins; any other non-empty product name falls back to a generic
+        ("General Retail / Merchandise", 6, 7) estimate. Returns None only when
+        there is no product name to work from.
         Note: warranty_months=0 means "no standard warranty" (e.g. clothing).
     """
     combined = " ".join(

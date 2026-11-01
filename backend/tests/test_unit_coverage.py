@@ -116,10 +116,17 @@ class TestCategoryFallback:
         _, _, return_days = result
         assert return_days > 0
 
-    def test_unknown_product_returns_none(self):
+    def test_unknown_product_falls_back_to_general_retail(self):
+        # Unrecognised products still get a conservative generic estimate so the
+        # dashboard can show a warranty window instead of "unknown".
         from app.services.category_fallback import get_category_fallback
         result = get_category_fallback("xyzzy unknowable item 12345")
-        assert result is None
+        assert result == ("General Retail / Merchandise", 6, 7)
+
+    def test_empty_product_returns_none(self):
+        from app.services.category_fallback import get_category_fallback
+        assert get_category_fallback(None) is None
+        assert get_category_fallback("") is None
 
     def test_apply_fallback_fills_missing_warranty(self):
         from app.services.category_fallback import apply_category_fallback

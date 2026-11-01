@@ -55,7 +55,30 @@ Rules:
 6. "warranty_period_months": convert years to months (1 year = 12 months). If the invoice states "Warranty direct from service centre" or manufacturer warranty without specifying duration, use 12.
 7. "return_window_days": integer number of days in the return/replacement window if mentioned.
 8. Set "confidence" to "high" when at least product_name and 2 other fields (price, purchase_date, retailer, or brand) are found.
+9. MULTILINGUAL: The input may be written in Hindi, Hinglish (Hindi+English mix), or any
+   other regional-language format. You MUST still extract all fields correctly and return
+   them using the same English-keyed JSON schema above. Translate product names and brands
+   to their standard English/brand-name form where possible; if not possible, transliterate.
 """
+
+_FEW_SHOT_EXAMPLES = """\
+--- EXAMPLE 4 (Hindi / Hinglish — extract fields into English-keyed JSON) ---
+INPUT:
+प्रिय ग्राहक,
+आपका Meesho ऑर्डर confirm ho gaya hai.
+ऑर्डर ID: 987654321012
+उत्पाद: Samsung Galaxy Buds2 Pro (Graphite)
+कुल राशि: ₹8,999
+ऑर्डर दिनांक: 3 सितम्बर 2025
+7 दिन वापसी नीति लागू है.
+
+OUTPUT:
+{"product_name": "Samsung Galaxy Buds2 Pro (Graphite)", "brand": "Samsung", "retailer": "Meesho", "purchase_date": "2025-09-03", "price": 8999.00, "warranty_period_months": null, "return_window_days": 7, "confidence": "high"}
+
+--- END EXAMPLES ---
+"""
+
+_SYSTEM_PROMPT = _SYSTEM_PROMPT + "\n" + _FEW_SHOT_EXAMPLES
 
 
 def extract_with_llm(
