@@ -183,28 +183,24 @@ def gmail_callback(
 
     # -- Exchange code for tokens --
     try:
-        # Relax scope checking since Google may return fewer scopes if the user didn't check the box
+        # Relax scope checking so users can sign in even if optional scopes are omitted
         os.environ["OAUTHLIB_RELAX_TOKEN_SCOPE"] = "1"
-        
         flow = _build_flow()
         flow.fetch_token(code=code)
         credentials: Credentials = flow.credentials
-        
-        # Check if the user actually granted the Gmail scope
-        if not credentials.has_scopes(["https://www.googleapis.com/auth/gmail.readonly"]):
-            raise ValueError("Gmail read scope was not granted.")
-    except ValueError as exc:
-        logger.error("User did not grant Gmail scope")
-        raise HTTPException(
-            status_code=400,
-            detail="You must check the box to grant Gmail read access on the Google consent screen. Please try connecting again.",
-        ) from exc
     except Exception as exc:
         logger.error("Token exchange failed: %s", exc, exc_info=True)
         raise HTTPException(
             status_code=400,
             detail=f"Failed to exchange authorization code for tokens. Reason: {exc}",
         ) from exc
+
+    # Check whether the user granted the Gmail scope
+    has_gmail_scope = False
+    try:
+        has_gmail_scope = credentials.has_scopes(["https://www.googleapis.com/auth/gmail.readonly"])
+    except Exception:
+        has_gmail_scope = False
 
     # -- Fetch user's Gmail address & profile name from Google --
     full_name: str = ""
@@ -252,7 +248,7 @@ def gmail_callback(
     else:
         logger.info("Existing user record found for %s (id=%s)", email, user.id)
 
-    if encrypted_token:
+    if encrypted_token and has_gmail_scope:
         user.google_oauth_token_encrypted = encrypted_token
 
     try:
