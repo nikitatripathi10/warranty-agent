@@ -8,11 +8,16 @@ import pytest
 from fastapi import HTTPException
 
 from app.models import User
+from app.routers import auth_gmail
 from app.routers.auth_gmail import (
+    _BASIC_SCOPES,
     _DEFAULT_FRONTEND_ORIGIN,
+    _GMAIL_SCOPES,
+    _decode_state,
     _fallback_origin,
     _is_safe_origin,
     email_connect,
+    google_login,
 )
 from app.schemas import EmailConnectRequest
 
@@ -65,6 +70,74 @@ def test_fallback_origin_uses_configured_safe_origin(monkeypatch: pytest.MonkeyP
 def test_fallback_origin_ignores_unsafe_configuration(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("FRONTEND_ORIGIN", "https://evil.example.com")
     assert _fallback_origin() == _DEFAULT_FRONTEND_ORIGIN
+
+
+# ── Google sign-in vs Gmail connection (scope split) ──────────────────────────
+
+_GMAIL_READONLY = "https://www.googleapis.com/auth/gmail.readonly"
+
+
+class _FakeRequest:
+    """Only `headers` is read by the OAuth entry points."""
+
+    def __init__(self, headers: dict[str, str] | None = None) -> None:
+        self.headers = headers or {}
+
+
+@pytest.fixture
+def oauth_configured(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(auth_gmail, "_GOOGLE_CLIENT_ID", "test-client-id")
+    monkeypatch.setattr(auth_gmail, "_GOOGLE_CLIENT_SECRET", "test-client-secret")
+    monkeypatch.setattr(
+        auth_gmail, "_GOOGLE_REDIRECT_URI", "https://example.com/auth/gmail/callback"
+    )
+
+
+def _authorization_params(response) -> tuple[list[str], dict[str, list[str]]]:  # noqa: ANN001
+    from urllib.parse import parse_qs, urlparse
+
+    location = response.headers["location"]
+    parsed = urlparse(location)
+    scopes = parse_qs(parsed.query).get("scope", [""])[0].split()
+    return scopes, parse_qs(parsed.query)
+
+
+def test_signin_requests_identity_scopes_only(oauth_configured: None) -> None:
+    response = google_login(_FakeRequest(), return_url=None)
+    scopes, params = _authorization_params(response)
+
+    assert _GMAIL_READONLY not in scopes
+    assert scopes == _BASIC_SCOPES
+    assert params["prompt"] == ["select_account"]
+    assert params["access_type"] == ["online"]
+
+
+def test_gmail_connect_still_requests_readonly_scope(oauth_configured: None) -> None:
+    response = auth_gmail.gmail_connect(_FakeRequest(), return_url=None)
+    scopes, params = _authorization_params(response)
+
+    assert _GMAIL_READONLY in scopes
+    assert set(scopes) == set(_GMAIL_SCOPES)
+    assert params["prompt"] == ["consent"]
+    assert params["access_type"] == ["offline"]
+
+
+def test_signin_state_keeps_only_allowlisted_origins(oauth_configured: None) -> None:
+    allowed = google_login(_FakeRequest(), return_url="https://venerable-boba-fb4868.netlify.app/")
+    _, params = _authorization_params(allowed)
+    assert _decode_state(params["state"][0]) == "https://venerable-boba-fb4868.netlify.app"
+
+    blocked = google_login(_FakeRequest(), return_url="https://evil.example.com")
+    _, blocked_params = _authorization_params(blocked)
+    assert _decode_state(blocked_params["state"][0]) is None
+
+
+def test_signin_does_not_use_referer_outside_allowlist(oauth_configured: None) -> None:
+    response = google_login(
+        _FakeRequest({"referer": "https://vercel.app.evil.com/signin"}), return_url=None
+    )
+    _, params = _authorization_params(response)
+    assert _decode_state(params["state"][0]) is None
 
 
 # ── Direct email sign-in ──────────────────────────────────────────────────────

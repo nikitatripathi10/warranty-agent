@@ -179,6 +179,12 @@ export default function App() {
   })
   const [userEmail, setUserEmail] = useState(() => localStorage.getItem('wrd_user_email') || '')
   const [userName, setUserName] = useState(() => localStorage.getItem('wrd_user_name') || '')
+  // Whether a Gmail refresh token is stored for this workspace. Sign-in only
+  // proves identity, so Gmail access is a separate, on-demand step.
+  const [gmailConnected, setGmailConnected] = useState(() => {
+    const stored = localStorage.getItem('wrd_gmail_connected')
+    return stored === '1' ? true : stored === '0' ? false : null
+  })
   const isConnected = Boolean(userId && userEmail)
 
   // Remember this browser's workspace token so signing out and back in with the
@@ -281,6 +287,12 @@ export default function App() {
     const cbUserId = params.get('user_id')
     const cbEmail = params.get('email')
     const cbName = params.get('name')
+    const cbGmail = params.get('gmail_connected')
+    if (cbGmail === '1' || cbGmail === '0') {
+      const connected = cbGmail === '1'
+      localStorage.setItem('wrd_gmail_connected', cbGmail)
+      setGmailConnected(connected)
+    }
     if (cbUserId && cbEmail) {
       localStorage.setItem('wrd_user_id', cbUserId)
       localStorage.setItem('wrd_user_email', cbEmail)
@@ -397,8 +409,22 @@ export default function App() {
         { method: 'POST', signal: AbortSignal.timeout(120000) }
       )
       const data = await res.json()
-      if (!res.ok) throw new Error(data.detail || `HTTP ${res.status}`)
+      if (!res.ok) {
+        const detail = String(data.detail || `HTTP ${res.status}`)
+        // Identity-only sign-in has no Gmail token yet: send the user through the
+        // Gmail consent flow instead of showing a raw backend error.
+        if (res.status === 400 && detail.toLowerCase().includes('not connected gmail')) {
+          localStorage.setItem('wrd_gmail_connected', '0')
+          setGmailConnected(false)
+          addToast('Connect Gmail to scan your inbox — redirecting…', 'info')
+          handleConnectGmailAccount()
+          return
+        }
+        throw new Error(detail)
+      }
       setFetchResult(data)
+      localStorage.setItem('wrd_gmail_connected', '1')
+      setGmailConnected(true)
       addToast(`Scanned ${data.emails_scanned} emails · ${data.purchases_created} new records saved`, 'success')
       loadPurchases()
       loadAlerts()
@@ -729,9 +755,11 @@ export default function App() {
     localStorage.removeItem('wrd_user_id')
     localStorage.removeItem('wrd_user_email')
     localStorage.removeItem('wrd_user_name')
+    localStorage.removeItem('wrd_gmail_connected')
     setUserId('')
     setUserEmail('')
     setUserName('')
+    setGmailConnected(null)
     setPurchases([])
     setAlerts([])
     setSelectedPurchase(null)
@@ -755,9 +783,11 @@ export default function App() {
     localStorage.setItem('wrd_user_id', data.user_id)
     localStorage.setItem('wrd_user_email', data.email)
     localStorage.setItem('wrd_user_name', data.name)
+    localStorage.setItem('wrd_gmail_connected', data.has_gmail_connected ? '1' : '0')
     setUserId(data.user_id)
     setUserEmail(data.email)
     setUserName(data.name)
+    setGmailConnected(Boolean(data.has_gmail_connected))
     setPurchases([])
     setAlerts([])
     setSelectedPurchase(null)
@@ -765,7 +795,16 @@ export default function App() {
     addToast(`Connected to workspace for ${data.email}`, 'success')
   }
 
-  function handleConnectGmail() {
+  // Identity-only Google sign-in. Google shows the app name here and does not
+  // ask for Gmail access, so new users never hit the restricted-scope screen.
+  function handleGoogleSignIn() {
+    const origin = typeof window !== 'undefined' ? window.location.origin : ''
+    const returnParam = origin ? `?return_url=${encodeURIComponent(origin)}` : ''
+    window.location.href = `${API_BASE}/auth/google/login${returnParam}`
+  }
+
+  // Explicit Gmail authorization, requested only when the user wants to scan.
+  function handleConnectGmailAccount() {
     const origin = typeof window !== 'undefined' ? window.location.origin : ''
     const returnParam = origin ? `?return_url=${encodeURIComponent(origin)}` : ''
     window.location.href = `${API_BASE}/auth/gmail/connect${returnParam}`
@@ -816,13 +855,15 @@ export default function App() {
             onToggleTheme={toggleTheme}
             activePalette={activePalette}
             onSelectPalette={handleSelectPalette}
-            onConnect={handleConnectGmail}
+            onConnect={handleGoogleSignIn}
           />
           <main className="flex-1">
             <LandingView
               apiBase={API_BASE}
               isConnected={false}
               userEmail=""
+              gmailConnected={gmailConnected}
+              onConnectGmail={handleConnectGmailAccount}
               onDirectEmailConnect={handleDirectEmailConnect}
               onDisconnect={handleDisconnect}
               onboardStep={onboardStep}
@@ -898,6 +939,8 @@ export default function App() {
                   apiBase={API_BASE}
                   isConnected={isConnected}
                   userEmail={userEmail}
+                  gmailConnected={gmailConnected}
+                  onConnectGmail={handleConnectGmailAccount}
                   onDirectEmailConnect={handleDirectEmailConnect}
                   onDisconnect={handleDisconnect}
                   onNavigate={setScreen}

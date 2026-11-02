@@ -70,6 +70,8 @@ _default_origins = [
     "http://localhost:3000",
     "https://warranty-agent-nikita-54bd.vercel.app",
     "https://venerable-boba-fb4868.netlify.app",
+    # Same-origin SPA served by this backend.
+    "https://warranty-agent.onrender.com",
 ]
 
 _frontend_origin = os.getenv("FRONTEND_ORIGIN", "").strip()
@@ -96,9 +98,25 @@ app.add_middleware(
 # ── Routers ───────────────────────────────────────────────────────────────────
 
 app.include_router(health.router,        prefix="/health",      tags=["Health"])
+app.include_router(auth_gmail.signin_router, prefix="/auth/google", tags=["Auth"])
 app.include_router(auth_gmail.router,    prefix="/auth/gmail",  tags=["Auth"])
 app.include_router(ingestion.router,     prefix="/ingestion",   tags=["Ingestion"])
 app.include_router(extraction.router,    prefix="/extraction",  tags=["Extraction"])
 app.include_router(purchases.router,     prefix="/purchases",   tags=["Purchases"])
 app.include_router(alerts.router,        prefix="/alerts",      tags=["Alerts"])
 app.include_router(agent.router,         prefix="/agent",       tags=["Agent"])
+
+# ── Optional: serve the built SPA from this same process ─────────────────────
+# The Docker image copies frontend/dist here so one deploy covers API + UI.
+# The mount is conditional, so deployments that only build the backend are
+# unaffected. It is registered last so every API route above wins.
+from pathlib import Path  # noqa: E402
+
+from fastapi.staticfiles import StaticFiles  # noqa: E402
+
+_frontend_dist = os.getenv("FRONTEND_DIST", "").strip() or str(
+    Path(__file__).resolve().parent / "frontend_dist"
+)
+if Path(_frontend_dist, "index.html").is_file():
+    app.mount("/", StaticFiles(directory=_frontend_dist, html=True), name="frontend")
+    logger.info("Serving frontend SPA from %s", _frontend_dist)

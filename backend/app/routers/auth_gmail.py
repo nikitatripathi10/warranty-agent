@@ -1,10 +1,21 @@
 """
-Gmail OAuth 2.0 connect + callback endpoints.
+Google OAuth 2.0 endpoints.
 
-Flow:
-  1. GET /auth/gmail/connect  → redirect user to Google's consent screen
-  2. GET /auth/gmail/callback → exchange code for tokens, encrypt refresh token,
-                                upsert user record, return user info
+Two separate entry points share one registered redirect URI:
+
+  1. GET /auth/google/login    → identity-only sign-in (openid/email/profile).
+                                 Google shows the app name and never asks for
+                                 Gmail access, so normal sign-in is frictionless.
+
+  2. GET /auth/gmail/connect   → explicit Gmail connection (gmail.readonly).
+  3. GET /auth/gmail/callback  → exchange code for tokens, encrypt refresh token,
+                                 upsert user record, return user info.
+
+Splitting the two flows matters because gmail.readonly is a *restricted* scope:
+prompting for it at sign-in makes every new user face a "wants access to your
+Google Account" screen branded only with the raw domain (Google hides the app
+name until brand verification), and it caps sign-in at the 100-user CASA limit.
+Sign-in now asks for identity only; Gmail is requested on demand.
 
 Environment variables required (see .env.example):
   GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URI
@@ -40,11 +51,23 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-_GMAIL_SCOPES = [
-    "https://www.googleapis.com/auth/gmail.readonly",
+# Identity-only scopes. Google treats these as non-sensitive: the consent screen
+# shows the app name and no "wants access to your Google Account" warning.
+_BASIC_SCOPES = [
     "openid",
     "https://www.googleapis.com/auth/userinfo.email",
     "https://www.googleapis.com/auth/userinfo.profile",
+]
+
+# Sign-in lives at /auth/google/login; Gmail connection stays at
+# /auth/gmail/connect. Both reuse the single registered redirect URI below.
+signin_router = APIRouter()
+
+_GMAIL_SCOPE = "https://www.googleapis.com/auth/gmail.readonly"
+
+_GMAIL_SCOPES = [
+    _GMAIL_SCOPE,
+    *_BASIC_SCOPES,
 ]
 
 _GOOGLE_CLIENT_ID     = os.getenv("GOOGLE_CLIENT_ID")
@@ -58,6 +81,9 @@ _GOOGLE_REDIRECT_URI  = os.getenv("GOOGLE_REDIRECT_URI", "http://localhost:8000/
 _SAFE_PRODUCTION_ORIGINS = {
     "https://warranty-agent-nikita-54bd.vercel.app",
     "https://venerable-boba-fb4868.netlify.app",
+    # The backend can serve the built SPA (see main.py), so the app is reachable
+    # on the same origin as the API.
+    "https://warranty-agent.onrender.com",
 }
 
 # Public, unprotected frontend. Used when the OAuth state carries no usable
@@ -141,7 +167,7 @@ def _decode_state(state: str | None) -> str | None:
     return None
 
 
-def _build_flow() -> Flow:
+def _build_flow(scopes: list[str] | None = None) -> Flow:
     """Create an OAuth2 flow from environment variables (never from hardcoded values)."""
     if not _GOOGLE_CLIENT_ID or not _GOOGLE_CLIENT_SECRET:
         raise HTTPException(
@@ -164,9 +190,55 @@ def _build_flow() -> Flow:
 
     return Flow.from_client_config(
         client_config,
-        scopes=_GMAIL_SCOPES,
+        scopes=scopes or _GMAIL_SCOPES,
         redirect_uri=_GOOGLE_REDIRECT_URI,
     )
+
+
+def _resolve_caller_origin(request: Request, return_url: str | None) -> str | None:
+    """Pick the frontend origin to return to, ignoring anything not on the allowlist."""
+    if return_url and _is_safe_origin(return_url):
+        return return_url.strip().rstrip("/")
+
+    referer = request.headers.get("referer")
+    if referer:
+        parsed = urlparse(referer)
+        candidate = f"{parsed.scheme}://{parsed.netloc}"
+        if _is_safe_origin(candidate):
+            return candidate
+    return None
+
+
+@signin_router.get("/login", summary="Sign in with Google (identity only, no Gmail access)")
+def google_login(
+    request: Request,
+    return_url: str | None = Query(None, description="Frontend origin or URL to return to after sign-in"),
+):
+    """
+    Identity-only Google sign-in.
+
+    Requests just openid/email/profile, so Google shows the app name and skips
+    the restricted-scope warning screen entirely. Gmail access is requested
+    separately from /auth/gmail/connect when the user asks to scan their inbox.
+    """
+    try:
+        flow = _build_flow(_BASIC_SCOPES)
+        caller_origin = _resolve_caller_origin(request, return_url)
+        auth_url, _ = flow.authorization_url(
+            access_type="online",
+            prompt="select_account",
+            state=_encode_state(caller_origin),
+        )
+        logger.info(
+            "Redirecting user to Google sign-in (caller_origin=%s)",
+            caller_origin,
+        )
+        return RedirectResponse(url=auth_url)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("Failed to build Google sign-in URL: %s", exc)
+        raise HTTPException(status_code=500, detail="Failed to initiate Google sign-in") from exc
 
 
 @router.get("/connect", summary="Redirect to Google OAuth consent screen")
@@ -180,19 +252,9 @@ def gmail_connect(
     is returned to the exact website (Vercel, Netlify, or local) they started from.
     """
     try:
-        flow = _build_flow()
+        flow = _build_flow(_GMAIL_SCOPES)
 
-        caller_origin = None
-        if return_url and _is_safe_origin(return_url):
-            caller_origin = return_url.strip().rstrip("/")
-        else:
-            referer = request.headers.get("referer")
-            if referer:
-                parsed = urlparse(referer)
-                candidate = f"{parsed.scheme}://{parsed.netloc}"
-                if _is_safe_origin(candidate):
-                    caller_origin = candidate
-
+        caller_origin = _resolve_caller_origin(request, return_url)
         state_payload = _encode_state(caller_origin)
         auth_url, _ = flow.authorization_url(
             access_type="offline",   # Required to get a refresh token
@@ -201,7 +263,7 @@ def gmail_connect(
             state=state_payload,
         )
         logger.info(
-            "Redirecting user to Google OAuth consent screen (caller_origin=%s)",
+            "Redirecting user to Gmail consent screen (caller_origin=%s)",
             caller_origin,
         )
         return RedirectResponse(url=auth_url)
@@ -248,10 +310,12 @@ def gmail_callback(
             detail=f"Failed to exchange authorization code for tokens. Reason: {exc}",
         ) from exc
 
-    # Check whether the user granted the Gmail scope
+    # Check whether the user granted the Gmail scope. Identity-only sign-ins
+    # (from /auth/google/login) never grant it, so we must not touch the stored
+    # refresh token in that case.
     has_gmail_scope = False
     try:
-        has_gmail_scope = credentials.has_scopes(["https://www.googleapis.com/auth/gmail.readonly"])
+        has_gmail_scope = credentials.has_scopes([_GMAIL_SCOPE])
     except Exception:
         has_gmail_scope = False
 
@@ -323,6 +387,9 @@ def gmail_callback(
     params = {
         "user_id": str(user.id),
         "email": user.email,
+        # Lets the frontend prompt "Connect Gmail to scan" instead of failing a
+        # scan call when the user signed in with identity-only Google scopes.
+        "gmail_connected": "1" if user.google_oauth_token_encrypted else "0",
     }
     if full_name:
         params["name"] = full_name

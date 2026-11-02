@@ -38,6 +38,8 @@ export default function LandingView({
   userEmail,
   onDisconnect,
   onNavigate,
+  onConnectGmail,
+  gmailConnected = null,
   onboardStep,
   activePalette = 'cyberpunk',
   // Scan Inbox props
@@ -90,10 +92,12 @@ export default function LandingView({
     uploadFile || additionalUploadFile || (selectedUploadPurchaseId && hasManualAdditional)
   )
 
-  const handleConnectGmail = () => {
+  // Identity-only Google sign-in: Google shows the app name and never asks for
+  // Gmail access. Gmail is requested separately once the user wants to scan.
+  const handleGoogleSignIn = () => {
     const origin = typeof window !== 'undefined' ? window.location.origin : ''
     const returnParam = origin ? `?return_url=${encodeURIComponent(origin)}` : ''
-    window.location.href = `${apiBase}/auth/gmail/connect${returnParam}`
+    window.location.href = `${apiBase}/auth/google/login${returnParam}`
   }
 
   const handleDirectEmailSubmit = async (e) => {
@@ -243,7 +247,7 @@ export default function LandingView({
 
               <a
                 id="btn-connect-gmail"
-                href={`${apiBase}/auth/gmail/connect${typeof window !== 'undefined' && window.location.origin ? `?return_url=${encodeURIComponent(window.location.origin)}` : ''}`}
+                href={`${apiBase}/auth/google/login${typeof window !== 'undefined' && window.location.origin ? `?return_url=${encodeURIComponent(window.location.origin)}` : ''}`}
                 className="flex w-full items-center justify-center gap-2.5 rounded-xl border border-indigo-400/40 bg-linear-to-r from-indigo-500 to-violet-600 px-6 py-3.5 text-sm font-semibold text-white shadow-[0_8px_24px_-6px_rgba(99,102,241,0.55)] transition hover:from-indigo-400 hover:to-violet-500"
               >
                 <svg width="18" height="18" viewBox="0 0 48 48" style={{ flexShrink: 0 }}>
@@ -295,7 +299,20 @@ export default function LandingView({
             </div>
           ) : (
             <div className="space-y-4">
-              <Notice tone="success">Your Gmail account is connected.</Notice>
+              {gmailConnected === false ? (
+                <Notice tone="warning">
+                  Signed in as {userEmail}, but Gmail isn’t connected yet. Connect it to scan
+                  purchase emails.
+                </Notice>
+              ) : (
+                <Notice tone="success">Your Gmail account is connected.</Notice>
+              )}
+              {gmailConnected === false && onConnectGmail && (
+                <Button variant="primary" size="md" full onClick={onConnectGmail}>
+                  <Icon name="mail" size={15} />
+                  <span>Connect Gmail to scan</span>
+                </Button>
+              )}
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <UserChip email={userEmail} />
                 <div className="flex items-center gap-2">
@@ -338,7 +355,7 @@ export default function LandingView({
             variant="primary"
             size="lg"
             full
-            onClick={isConnected ? onScanInbox : handleConnectGmail}
+            onClick={isConnected ? onScanInbox : handleGoogleSignIn}
             disabled={fetchLoading}
           >
             {fetchLoading ? (
@@ -652,7 +669,7 @@ export default function LandingView({
             variant="accent"
             size="lg"
             full
-            onClick={isConnected ? onUpload : handleConnectGmail}
+            onClick={isConnected ? onUpload : handleGoogleSignIn}
             disabled={!canSubmitUpload || uploadLoading}
           >
             {uploadLoading ? (

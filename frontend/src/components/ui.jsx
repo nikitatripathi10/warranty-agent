@@ -262,6 +262,7 @@ export function Notice({ tone = 'info', children, className }) {
     success: 'border-emerald-400/30 bg-emerald-400/10 text-emerald-200 light:text-emerald-800',
     error: 'border-rose-400/30 bg-rose-400/10 text-rose-200 light:text-rose-800',
     info: 'border-sky-400/30 bg-sky-400/10 text-sky-200 light:text-sky-800',
+    warning: 'border-amber-400/30 bg-amber-400/10 text-amber-200 light:text-amber-800',
   }[tone]
   return (
     <motion.div
