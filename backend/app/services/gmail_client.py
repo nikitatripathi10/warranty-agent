@@ -19,14 +19,9 @@ from googleapiclient.errors import HttpError
 
 logger = logging.getLogger(__name__)
 
-# Matches:
-# 1. Order / invoice / shipped / warranty emails from major Indian retailers
-# 2. Direct purchase confirmations, warranty cards, and tax invoices
-#
-# Only *received* mail is considered. The trailing exclusions drop anything the
-# account holder sent themselves (forwards, replies, receipts mailed to a
-# shop/vendor) and drafts, so a scan never imports sent items as purchases.
-GMAIL_SEARCH_QUERY = (
+# Base matcher, without any mailbox-direction filter. Used to build both the
+# received-mail query below and the sent-mail query used for cleanup.
+_BASE_SEARCH_QUERY = (
     "("
     "("
     "from:("
@@ -41,8 +36,17 @@ GMAIL_SEARCH_QUERY = (
     "OR \"invoice for your order\" OR \"warranty details\" OR \"warranty claim\") "
     "-from:(internshala.com OR unstop.news OR linkedin.com OR vercel.com OR medium.com OR substack.com OR google.com)"
     ")"
-    ") -in:sent -in:drafts -in:chats -from:me"
+    ")"
 )
+
+# Only *received* mail is considered. The trailing exclusions drop anything the
+# account holder sent themselves (forwards, replies, receipts mailed to a
+# shop/vendor) and drafts, so a scan never imports sent items as purchases.
+GMAIL_SEARCH_QUERY = _BASE_SEARCH_QUERY + " -in:sent -in:drafts -in:chats -from:me"
+
+# The same matcher restricted to outbound mail. Used to purge rows that older
+# scans imported from sent emails before this filter existed.
+GMAIL_SENT_SEARCH_QUERY = _BASE_SEARCH_QUERY + " in:sent -in:drafts -in:chats"
 
 _ALLOWED_ATTACHMENT_MIMES = {
     "application/pdf",
@@ -85,6 +89,28 @@ def search_order_emails(service, max_results: int = 50) -> list[dict]:
         return []
     except Exception as exc:
         logger.error("Unexpected error during Gmail search: %s", exc)
+        return []
+
+
+def search_sent_order_emails(service, max_results: int = 50) -> list[dict]:
+    """
+    Find invoice-like messages the user *sent* (forwards, replies, receipts).
+
+    Used only to clean up rows that earlier scans imported from outbound mail;
+    the normal scan never ingests these.
+    """
+    try:
+        response = (
+            service.users()
+            .messages()
+            .list(userId="me", q=GMAIL_SENT_SEARCH_QUERY, maxResults=max_results)
+            .execute()
+        )
+        messages = response.get("messages", [])
+        logger.info("Gmail sent-mail search returned %d message stubs", len(messages))
+        return messages
+    except Exception as exc:
+        logger.warning("Could not list sent mail for cleanup: %s", exc)
         return []
 
 

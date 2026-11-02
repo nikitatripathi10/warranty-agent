@@ -22,10 +22,13 @@ def test_gmail_query_contains_all_new_domains():
 
 def test_gmail_query_only_matches_received_mail():
     """Sent/draft mail must never be imported as a purchase."""
-    from app.services.gmail_client import GMAIL_SEARCH_QUERY
+    from app.services.gmail_client import GMAIL_SEARCH_QUERY, GMAIL_SENT_SEARCH_QUERY
     assert "-in:sent" in GMAIL_SEARCH_QUERY
     assert "-in:drafts" in GMAIL_SEARCH_QUERY
     assert "-from:me" in GMAIL_SEARCH_QUERY
+    # The outbound query is used only to purge rows imported by older scans.
+    assert " in:sent" in GMAIL_SENT_SEARCH_QUERY
+    assert "-in:sent" not in GMAIL_SENT_SEARCH_QUERY
 
 
 # -- Enhancement 1: Meesho regex extractor ----------------------------------

@@ -43,6 +43,7 @@ from app.services.gmail_client import (
     fetch_message_attachments,
     fetch_message_body,
     search_order_emails,
+    search_sent_order_emails,
 )
 from app.services.ocr import extract_text
 from app.services.vendor_normalizer import normalize_vendor
@@ -452,6 +453,27 @@ def fetch_emails(
 
     messages = search_order_emails(gmail_service, max_results=max_results)
     logger.info("Fetched %d email stubs for user %s", len(messages), user_id)
+
+    # Older scans could import invoices the user sent themselves. Remove those
+    # rows so the dashboard reflects received mail only.
+    sent_stubs = search_sent_order_emails(gmail_service, max_results=max_results)
+    sent_ids = [stub.get("id") for stub in sent_stubs if stub.get("id")]
+    if sent_ids:
+        removed = (
+            db.query(Purchase)
+            .filter(
+                Purchase.user_id == user.id,
+                Purchase.source_email_id.in_(sent_ids),
+            )
+            .delete(synchronize_session=False)
+        )
+        db.commit()
+        if removed:
+            logger.info(
+                "Removed %d purchase(s) imported from sent mail for user %s",
+                removed,
+                user_id,
+            )
 
     created = 0
     failed  = 0
