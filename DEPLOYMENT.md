@@ -273,3 +273,23 @@ Alembic supports downgrade:
 alembic downgrade -1   # roll back one migration
 alembic downgrade base # roll back everything (DANGER — data loss)
 ```
+
+---
+
+## 11. Serving the SPA from the backend (Python-runtime hosts)
+
+Some hosts (for example Render, when it builds the Python app directly instead of
+the root `Dockerfile`) never run the frontend build. In that case `main.py`
+serves `backend/frontend_dist` at `/`, but only when the directory exists, so
+backend-only deployments are unaffected.
+
+Regenerate and commit it after any frontend change:
+
+```bash
+npm --prefix frontend run build
+rm -rf backend/frontend_dist && cp -r frontend/dist backend/frontend_dist
+```
+
+The directory is generated output (see `.gitattributes`) - never edit those files
+by hand. Docker builds ignore the checked-in copy and build the SPA fresh in the
+image.
