@@ -21,8 +21,13 @@ logger = logging.getLogger(__name__)
 
 # Matches:
 # 1. Order / invoice / shipped / warranty emails from major Indian retailers
-# 2. Direct or forwarded purchase confirmations, warranty cards, and tax invoices
+# 2. Direct purchase confirmations, warranty cards, and tax invoices
+#
+# Only *received* mail is considered. The trailing exclusions drop anything the
+# account holder sent themselves (forwards, replies, receipts mailed to a
+# shop/vendor) and drafts, so a scan never imports sent items as purchases.
 GMAIL_SEARCH_QUERY = (
+    "("
     "("
     "from:("
     "amazon.in OR flipkart.com OR myntra.com OR nykaa.com OR meesho.com "
@@ -36,6 +41,7 @@ GMAIL_SEARCH_QUERY = (
     "OR \"invoice for your order\" OR \"warranty details\" OR \"warranty claim\") "
     "-from:(internshala.com OR unstop.news OR linkedin.com OR vercel.com OR medium.com OR substack.com OR google.com)"
     ")"
+    ") -in:sent -in:drafts -in:chats -from:me"
 )
 
 _ALLOWED_ATTACHMENT_MIMES = {

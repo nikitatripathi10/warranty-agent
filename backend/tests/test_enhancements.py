@@ -20,6 +20,14 @@ def test_gmail_query_contains_all_new_domains():
         assert domain in GMAIL_SEARCH_QUERY, f"Missing domain in Gmail query: {domain}"
 
 
+def test_gmail_query_only_matches_received_mail():
+    """Sent/draft mail must never be imported as a purchase."""
+    from app.services.gmail_client import GMAIL_SEARCH_QUERY
+    assert "-in:sent" in GMAIL_SEARCH_QUERY
+    assert "-in:drafts" in GMAIL_SEARCH_QUERY
+    assert "-from:me" in GMAIL_SEARCH_QUERY
+
+
 # -- Enhancement 1: Meesho regex extractor ----------------------------------
 
 MEESHO_SAMPLE = (
