@@ -178,9 +178,10 @@ def _run_extraction_pipeline(
     final_result = regex_result
 
     needs_llm = (
-        regex_result.confidence == "low"
+        regex_result.confidence in ("low", "medium")
         or not regex_result.product_name
         or regex_result.purchase_date is None
+        or regex_result.warranty_period_months is None
     )
 
     if not needs_llm:
@@ -487,11 +488,14 @@ def fetch_emails(
                 .filter(Purchase.user_id == user.id, Purchase.source_email_id == msg_id)
                 .first()
             )
-            # Skip emails that were already scanned and saved in the user's workspace
+            # Only skip if the purchase was already fully scanned with high confidence and explicit warranty
             if existing and existing.product_name:
-                logger.info("Message %s already indexed as purchase %s — skipping re-extraction", msg_id, existing.id)
-                created += 1
-                continue
+                wp = existing.warranty_period
+                if wp and wp.confidence_score == "high" and not wp.is_estimated:
+                    logger.info("Message %s already fully indexed with high confidence — skipping re-extraction", msg_id)
+                    created += 1
+                    continue
+                logger.info("Message %s was only moderately scanned — re-scanning with attachments to extract full invoice & warranty slip details", msg_id)
 
             body = fetch_message_body(gmail_service, msg_id) or ""
 
@@ -512,15 +516,15 @@ def fetch_emails(
             if body.strip():
                 result = _run_extraction_pipeline(body, hint=hint)
 
-            # Fast Pass 2: Only fetch and OCR heavy attachments if body text was insufficient
-            if not result or not _is_valid_extracted_purchase(result) or result.confidence == "low":
+            # Deep Pass 2: If body alone did not yield a high-confidence result with explicit warranty, read invoice & warranty slip attachments!
+            if not result or not _is_valid_extracted_purchase(result) or result.confidence != "high" or result.warranty_period_months is None:
                 attachments = fetch_message_attachments(gmail_service, msg_id)
                 if attachments:
                     body_parts = [body] if body.strip() else []
                     for att_filename, att_mime, att_bytes in attachments:
                         att_text, _ = extract_text(att_bytes, att_filename, content_type=att_mime)
                         if att_text.strip():
-                            body_parts.append(att_text)
+                            body_parts.append(f"--- ATTACHMENT ({att_filename}) ---\n{att_text}")
                     combined_text = "\n\n".join(body_parts).strip()
                     if combined_text:
                         result = _run_extraction_pipeline(combined_text, hint=hint)

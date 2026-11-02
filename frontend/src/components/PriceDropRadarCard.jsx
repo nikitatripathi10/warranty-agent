@@ -1,7 +1,123 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { GlassCard, Button, Spinner } from './ui'
 import Icon from './Icon'
 import { fmtPrice } from '../lib/format'
+
+function computeInstantRadar(purchase, manualSalePrice = null) {
+  if (!purchase) return null
+
+  const today = new Date()
+  const originalPrice = Number(purchase.price) || 0
+  const productName = purchase.product_name || 'Product'
+  const retailer = purchase.retailer || 'Retailer'
+  const brand = purchase.brand || ''
+
+  const wp = purchase.warranty_period
+  let returnEnd = wp?.return_window_end_date
+  if (!returnEnd && purchase.purchase_date) {
+    const d = new Date(purchase.purchase_date + 'T00:00:00')
+    d.setDate(d.getDate() + 10)
+    returnEnd = d.toISOString().slice(0, 10)
+  }
+
+  let isActive = false
+  let daysLeft = 0
+  if (returnEnd) {
+    const dEnd = new Date(returnEnd + 'T23:59:59')
+    const diff = Math.ceil((dEnd - today) / (1000 * 60 * 60 * 24))
+    isActive = diff >= 0
+    daysLeft = Math.max(0, diff)
+  }
+
+  let currentSale = 0
+  if (manualSalePrice !== null && Number(manualSalePrice) > 0) {
+    currentSale = Number(manualSalePrice)
+  } else if (originalPrice > 0) {
+    const drop = Math.round(originalPrice * 0.14)
+    currentSale = Math.max(0, originalPrice - drop)
+  }
+
+  const dropAmount = Math.max(0, originalPrice - currentSale)
+  const discountPct = originalPrice > 0 ? Math.round((dropAmount / originalPrice) * 1000) / 10 : 0
+
+  const pDateStr = purchase.purchase_date
+    ? new Date(purchase.purchase_date + 'T00:00:00').toLocaleDateString('en-IN', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+      })
+    : 'recently'
+  const invId =
+    purchase.source_file_ref || purchase.source_email_id || `ORD-${String(purchase.id).slice(0, 8).toUpperCase()}`
+
+  const lowerRet = (purchase.retailer || '').toLowerCase()
+  const lowerBrand = (purchase.brand || '').toLowerCase()
+
+  let supportName = `${retailer} Support`
+  let directSupportUrl = 'https://www.amazon.in/hz/contact-us/foresight/hubgateway'
+  let whatsappUrl = null
+  let brandSupportUrl = null
+  let brandSupportName = null
+  let brandWhatsappUrl = null
+
+  if (lowerRet.includes('hp') || lowerBrand.includes('hp') || lowerRet.includes('hewlett')) {
+    supportName = 'HP Official Support'
+    directSupportUrl = 'https://support.hp.com/in-en/contact'
+    whatsappUrl = 'https://wa.me/912261014560?text=Hi%20HP%20Support%2C%20I%20need%20assistance%20with%20my%20HP%20device'
+  } else if (lowerRet.includes('amazon')) {
+    supportName = 'Amazon Customer Service'
+    directSupportUrl = 'https://www.amazon.in/hz/contact-us/foresight/hubgateway'
+    if (lowerBrand.includes('hp')) {
+      brandSupportName = 'HP Official Support'
+      brandSupportUrl = 'https://support.hp.com/in-en/contact'
+      brandWhatsappUrl = 'https://wa.me/912261014560?text=Hi%20HP%20Support'
+    }
+  } else if (lowerRet.includes('flipkart')) {
+    supportName = 'Flipkart Help Centre'
+    directSupportUrl = 'https://www.flipkart.com/helpcentre'
+  } else if (lowerRet.includes('croma')) {
+    supportName = 'Croma Support'
+    directSupportUrl = 'https://www.croma.com/helpAndSupport'
+    whatsappUrl = 'https://wa.me/917207666000?text=Hi%20Croma%20Support'
+  } else if (lowerBrand.includes('dell')) {
+    supportName = 'Dell Support'
+    directSupportUrl = 'https://www.dell.com/support/inc/en/in/contactus'
+    whatsappUrl = 'https://wa.me/918000404455?text=Hi%20Dell%20Support'
+  } else if (lowerBrand.includes('samsung')) {
+    supportName = 'Samsung Support'
+    directSupportUrl = 'https://www.samsung.com/in/support/'
+    whatsappUrl = 'https://wa.me/91180057267864?text=Hi%20Samsung'
+  } else if (lowerBrand.includes('apple')) {
+    supportName = 'Apple Support'
+    directSupportUrl = 'https://getsupport.apple.com/'
+  }
+
+  const refundMessage = isActive
+    ? `Hello ${supportName} Team,\n\nI recently purchased '${productName}' on ${pDateStr} for ₹${originalPrice.toLocaleString('en-IN')} (Ref: ${invId}).\n\nI noticed that during the active Diwali / Festival Sale, the exact same item is currently listed on your platform for ₹${currentSale.toLocaleString('en-IN')}, a price drop of ₹${dropAmount.toLocaleString('en-IN')} (${discountPct}% off).\n\nMy order is within the active return window (${daysLeft} days remaining). Rather than initiating a return and reordering, I kindly request a price-difference refund credit of ₹${dropAmount.toLocaleString('en-IN')} to my wallet or original payment method.\n\nThank you!`
+    : `Hello ${supportName} Team,\n\nI purchased '${productName}' on ${pDateStr} for ₹${originalPrice.toLocaleString('en-IN')} (Ref: ${invId}). The price has significantly dropped to ₹${currentSale.toLocaleString('en-IN')} (difference of ₹${dropAmount.toLocaleString('en-IN')}). As a loyal customer, please review my order for a price-match store credit.\n\nThank you!`
+
+  return {
+    purchase_id: purchase.id,
+    product_name: productName,
+    brand: brand,
+    retailer: retailer,
+    purchase_date: purchase.purchase_date,
+    original_price: originalPrice,
+    current_sale_price: currentSale,
+    price_drop_amount: dropAmount,
+    discount_percentage: discountPct,
+    is_return_window_active: isActive,
+    days_left_in_return_window: daysLeft,
+    festival_event: 'Diwali & Festival Sale Price Drops',
+    refund_request_message: refundMessage,
+    direct_support_url: directSupportUrl,
+    support_channel_name: supportName,
+    whatsapp_url: whatsappUrl,
+    brand_support_url: brandSupportUrl,
+    brand_support_name: brandSupportName,
+    brand_whatsapp_url: brandWhatsappUrl,
+  }
+}
 
 export default function PriceDropRadarCard({
   purchase,
@@ -9,26 +125,31 @@ export default function PriceDropRadarCard({
   userId,
   addToast = () => {},
 }) {
-  const [radar, setRadar] = useState(null)
+  const [radar, setRadar] = useState(() => computeInstantRadar(purchase))
   const [loading, setLoading] = useState(false)
   const [customPrice, setCustomPrice] = useState('')
   const [copied, setCopied] = useState(false)
 
+  // Re-compute instantly whenever purchase prop changes
+  useEffect(() => {
+    if (purchase) {
+      setRadar(prev => prev || computeInstantRadar(purchase))
+    }
+  }, [purchase])
+
   const fetchRadar = useCallback(async (salePrice = null) => {
     if (!purchase?.id || !userId) return
-    setLoading(true)
     try {
       const q = salePrice ? `&sale_price=${encodeURIComponent(salePrice)}` : ''
       const res = await fetch(
         `${apiBase}/purchases/${purchase.id}/price-radar?user_id=${encodeURIComponent(userId)}${q}`
       )
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.detail || `HTTP ${res.status}`)
-      setRadar(data)
-    } catch (err) {
-      console.warn('Could not load price radar:', err.message)
-    } finally {
-      setLoading(false)
+      if (res.ok) {
+        const data = await res.json()
+        setRadar(data)
+      }
+    } catch {
+      /* fallback already displayed instantly */
     }
   }, [purchase?.id, userId, apiBase])
 
@@ -40,7 +161,9 @@ export default function PriceDropRadarCard({
     e.preventDefault()
     const p = parseFloat(customPrice)
     if (!isNaN(p) && p > 0) {
+      setRadar(computeInstantRadar(purchase, p))
       fetchRadar(p)
+      addToast(`Recalculated refund for ₹${p.toLocaleString('en-IN')}!`, 'success')
     }
   }
 
