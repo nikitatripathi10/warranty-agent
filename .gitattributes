@@ -1,0 +1,3 @@
+# Generated frontend bundle served by the backend when the SPA is built into the
+# image (Docker) or checked in for Python-runtime hosts. Never edit by hand.
+backend/frontend_dist/** -text linguist-generated=true
