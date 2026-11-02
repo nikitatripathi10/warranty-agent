@@ -38,7 +38,7 @@ def agent_query(
       - "When does my laptop warranty expire?"
       - "Which of my products can still be returned?"
       - "Do I have any products with low-confidence warranty data?"
-      - "Mera Sony headphone kab tak warranty mein hai?"
+      - "When does my Sony headphone warranty expire?"
     """
     logger.info(
         "Agent query for user %s: %r",

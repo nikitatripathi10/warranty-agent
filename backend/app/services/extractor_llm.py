@@ -59,6 +59,7 @@ Rules:
    other regional-language format. You MUST still extract all fields correctly and return
    them using the same English-keyed JSON schema above. Translate product names and brands
    to their standard English/brand-name form where possible; if not possible, transliterate.
+   All string values in the output JSON must be in English — never output Devanagari or Hindi script.
 """
 
 _FEW_SHOT_EXAMPLES = """\
