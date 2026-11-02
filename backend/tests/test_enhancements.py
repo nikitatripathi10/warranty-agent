@@ -150,3 +150,81 @@ def test_migration_0002_chain():
     spec.loader.exec_module(mod)
     assert mod.revision == "0002"
     assert mod.down_revision == "0001"
+
+
+# -- Feature 3: Legal Notice & e-Daakhil Dispute Generator -------------------
+
+def test_legal_notice_generation():
+    import uuid
+    from datetime import date
+    from app.models import Purchase
+    from app.schemas import LegalNoticeRequest
+    from app.services.legal_generator import generate_legal_notice
+
+    p = Purchase(
+        id=uuid.uuid4(),
+        user_id=uuid.uuid4(),
+        product_name="Sony WH-1000XM5 Headphones",
+        brand="Sony",
+        retailer="Amazon India",
+        purchase_date=date(2025, 10, 15),
+        price=Decimal("26990.00"),
+    )
+
+    req = LegalNoticeRequest(
+        user_id=p.user_id,
+        grievance_type="warranty_denial",
+        issue_description="Left earcup stopped working. Service center refused warranty citing moisture damage without evidence.",
+        consumer_name="Nikita Tripathi",
+    )
+
+    res = generate_legal_notice(p, req)
+    assert res.purchase_id == p.id
+    assert "FORMAL PRE-LITIGATION LEGAL NOTICE" in res.legal_notice_text
+    assert "CONSUMER PROTECTION ACT, 2019" in res.legal_notice_text
+    assert "84-87" in res.legal_notice_text
+    assert "Sony" in res.legal_notice_text
+    assert "₹26,990.00" in res.legal_notice_text
+    assert "edaakhil.nic.in" in res.portal_links["edaakhil_url"]
+    assert "1915" in res.portal_links["nch_toll_free_number"]
+    assert "Nikita Tripathi" in res.nch_grievance_draft
+
+
+# -- Feature 4: Diwali / Festival Price Drop Refund Radar -------------------
+
+def test_price_radar_analysis_and_script():
+    import uuid
+    from datetime import date, timedelta
+    from app.models import Purchase, WarrantyPeriod
+    from app.services.price_radar import analyze_price_drop, scan_user_purchases_for_price_drops
+
+    today = date.today()
+    # Purchase made 3 days ago -> well within active 10-day return window
+    p = Purchase(
+        id=uuid.uuid4(),
+        user_id=uuid.uuid4(),
+        product_name="OnePlus Nord CE4",
+        brand="OnePlus",
+        retailer="Amazon India",
+        purchase_date=today - timedelta(days=3),
+        price=Decimal("24999.00"),
+    )
+    p.warranty_period = WarrantyPeriod(
+        purchase_id=p.id,
+        return_window_end_date=today + timedelta(days=7),
+    )
+
+    radar = analyze_price_drop(p, manual_sale_price=21999.00)
+    assert radar.is_return_window_active is True
+    assert radar.days_left_in_return_window >= 6
+    assert radar.original_price == 24999.00
+    assert radar.current_sale_price == 21999.00
+    assert radar.price_drop_amount == 3000.00
+    assert "Amazon India Customer Support" in radar.refund_request_message
+    assert "₹3,000.00" in radar.refund_request_message
+    assert "active return window" in radar.refund_request_message
+
+    list_res = scan_user_purchases_for_price_drops(p.user_id, [p])
+    assert list_res.active_opportunities_count == 1
+    assert list_res.total_potential_refund > 0
+

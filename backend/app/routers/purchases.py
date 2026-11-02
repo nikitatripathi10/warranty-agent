@@ -21,11 +21,18 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import Purchase, User, WarrantyPeriod
 from app.schemas import (
+    LegalNoticeRequest,
+    LegalNoticeResponse,
+    PriceCheckRequest,
+    PriceRadarItem,
+    PriceRadarListResponse,
     PurchaseEditRequest,
     PurchaseOut,
     PurchasesListResponse,
     WarrantyPeriodOut,
 )
+from app.services.legal_generator import generate_legal_notice
+from app.services.price_radar import analyze_price_drop, scan_user_purchases_for_price_drops
 from app.services.vendor_normalizer import normalize_vendor
 
 logger = logging.getLogger(__name__)
@@ -247,6 +254,25 @@ def list_purchases(
 
 
 @router.get(
+    "/price-radar/all",
+    response_model=PriceRadarListResponse,
+    summary="Scan all user purchases for Diwali & festival sale price drops",
+)
+def get_all_price_drops(
+    user_id: uuid.UUID = Query(..., description="UUID of the user"),
+    festival_event: str = Query("Diwali & Festive Sales", description="Festival or sale season title"),
+    db: Session = Depends(get_db),
+) -> PriceRadarListResponse:
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    purchases = db.query(Purchase).filter(Purchase.user_id == user_id).all()
+    genuine = [p for p in purchases if _is_genuine_purchase_row(p)]
+    return scan_user_purchases_for_price_drops(user_id=user_id, purchases=genuine, festival_event=festival_event)
+
+
+@router.get(
     "/{purchase_id}",
     response_model=PurchaseOut,
     summary="Get a single purchase by ID",
@@ -259,6 +285,46 @@ def get_purchase(
     """Return a single purchase record with its warranty period."""
     purchase = _get_purchase_or_404(db, purchase_id, user_id)
     return PurchaseOut.model_validate(purchase)
+
+
+@router.post(
+    "/{purchase_id}/legal-notice",
+    response_model=LegalNoticeResponse,
+    summary="Generate 1-click formal legal demand notice & e-Daakhil / NCH dispute draft",
+)
+def create_legal_notice(
+    purchase_id: uuid.UUID,
+    body: LegalNoticeRequest,
+    db: Session = Depends(get_db),
+) -> LegalNoticeResponse:
+    """
+    Generate an enforceable 15-day Pre-Litigation Legal Demand Notice citing Sections
+    2(11), 2(47), and 84-87 of the Consumer Protection Act 2019, an NCH 1915 grievance draft,
+    and e-Daakhil filing guidance.
+    """
+    purchase = _get_purchase_or_404(db, purchase_id, body.user_id)
+    return generate_legal_notice(purchase, body)
+
+
+@router.get(
+    "/{purchase_id}/price-radar",
+    response_model=PriceRadarItem,
+    summary="Get festival price drop analysis & 1-click refund script for a purchase",
+)
+def get_item_price_radar(
+    purchase_id: uuid.UUID,
+    user_id: uuid.UUID = Query(..., description="UUID of the user"),
+    sale_price: float | None = Query(None, description="Optional manual observed sale price"),
+    festival_event: str = Query("Diwali / Festival Sale", description="Festival event title"),
+    db: Session = Depends(get_db),
+) -> PriceRadarItem:
+    """
+    Calculate price drop differential, verify active 7-14 day return window status,
+    and generate an automated Amazon/Flipkart price-match refund negotiation script.
+    """
+    purchase = _get_purchase_or_404(db, purchase_id, user_id)
+    return analyze_price_drop(purchase, manual_sale_price=sale_price, default_festival_name=festival_event)
+
 
 
 @router.patch(

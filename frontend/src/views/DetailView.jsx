@@ -1,7 +1,10 @@
+import { useState } from 'react'
 import { motion } from 'motion/react'
 import { GlassCard, Button, Field, ConfidenceBadge, UrgencyChip, Spinner } from '../components/ui'
 import { fmt, fmtDate, fmtPrice, daysUntil, parseAdditionalWarranty } from '../lib/format'
 import Icon from '../components/Icon'
+import LegalNoticeModal from '../components/LegalNoticeModal'
+import PriceDropRadarCard from '../components/PriceDropRadarCard'
 
 export default function DetailView({
   purchase,
@@ -19,7 +22,13 @@ export default function DetailView({
   agentAnswer,
   agentLoading,
   onAgentQuery,
+  apiBase,
+  userId,
+  userEmail,
+  userName,
+  addToast,
 }) {
+  const [showLegalModal, setShowLegalModal] = useState(false)
   const wp = purchase.warranty_period
   const { additionalWarranty, cleanSnippet } = parseAdditionalWarranty(wp?.source_snippet)
   const returnDays = wp?.return_window_end_date ? daysUntil(wp.return_window_end_date) : null
@@ -135,6 +144,16 @@ export default function DetailView({
               <Button
                 variant="secondary"
                 size="md"
+                onClick={() => setShowLegalModal(true)}
+                className="border-rose-500/40 text-rose-300 hover:bg-rose-500/15"
+              >
+                <Icon name="scale" size={15} />
+                <span>Legal Notice &amp; Dispute (e-Daakhil / NCH)</span>
+              </Button>
+
+              <Button
+                variant="secondary"
+                size="md"
                 onClick={() => {
                   setEditMode(true)
                   setEditForm({
@@ -243,6 +262,14 @@ export default function DetailView({
         )}
       </GlassCard>
 
+      {/* ── Festival Sale Price Drop Refund Radar ─────────────────────── */}
+      <PriceDropRadarCard
+        purchase={purchase}
+        apiBase={apiBase}
+        userId={userId}
+        addToast={addToast}
+      />
+
       {/* ── AI Warranty Agent Query Box ──────────────────────────────────── */}
       <GlassCard className="p-6">
         <div className="mb-4 flex items-center gap-3">
@@ -288,6 +315,18 @@ export default function DetailView({
           </motion.div>
         )}
       </GlassCard>
+
+      {/* ── Legal Notice & Dispute Modal ─────────────────────────────── */}
+      <LegalNoticeModal
+        purchase={purchase}
+        apiBase={apiBase}
+        userId={userId}
+        userEmail={userEmail}
+        userName={userName}
+        isOpen={showLegalModal}
+        onClose={() => setShowLegalModal(false)}
+        addToast={addToast}
+      />
     </div>
   )
 }

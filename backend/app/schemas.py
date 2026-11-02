@@ -246,3 +246,85 @@ class RecallCheckResponse(BaseModel):
     user_id: uuid.UUID
     purchases_checked: int
     recall_matches: int
+
+
+# ── Legal Notice & Dispute Generator Schemas ─────────────────────────────────
+
+class LegalNoticeRequest(BaseModel):
+    """Request to generate a statutory pre-litigation legal notice under Consumer Protection Act 2019."""
+
+    user_id: uuid.UUID
+    grievance_type: str = Field(
+        "warranty_denial",
+        description="Type of grievance: 'warranty_denial', 'defective_product', 'delayed_repair', 'unfair_trade_practice'",
+    )
+    issue_description: Optional[str] = Field(
+        None,
+        description="Detailed description of defect or service deficiency experienced by consumer",
+    )
+    custom_demand: Optional[str] = Field(
+        None,
+        description="Consumer's desired relief: 'full_refund', 'replacement', 'immediate_repair_compensation'",
+    )
+    consumer_name: Optional[str] = Field(None, description="Name of the complainant")
+    consumer_address: Optional[str] = Field(None, description="Address of the complainant")
+    consumer_phone: Optional[str] = Field(None, description="Phone number of the complainant")
+
+
+class LegalNoticeResponse(BaseModel):
+    """Generated legal notice, NCH grievance draft, and e-Daakhil filing guidance."""
+
+    purchase_id: uuid.UUID
+    product_name: str
+    brand: Optional[str] = None
+    retailer: Optional[str] = None
+    purchase_date: Optional[str] = None
+    invoice_number: Optional[str] = None
+    amount_paid: Optional[str] = None
+    notice_reference: str
+    legal_notice_text: str
+    nch_grievance_draft: str
+    statutory_sections_cited: list[str]
+    edaakhil_guidance: dict
+    portal_links: dict
+
+
+# ── Festival Price Drop Refund Radar Schemas ─────────────────────────────────
+
+class PriceCheckRequest(BaseModel):
+    """Optional manual price override check."""
+
+    current_sale_price: Optional[float] = Field(
+        None, description="Current festival sale price observed by consumer"
+    )
+
+
+class PriceRadarItem(BaseModel):
+    """Single item festival sale price drop opportunity."""
+
+    purchase_id: uuid.UUID
+    product_name: str
+    brand: Optional[str] = None
+    retailer: Optional[str] = None
+    purchase_date: Optional[str] = None
+    original_price: float
+    current_sale_price: float
+    price_drop_amount: float
+    discount_percentage: float
+    is_return_window_active: bool
+    return_window_end_date: Optional[str] = None
+    days_left_in_return_window: int
+    festival_event: str
+    refund_request_message: str
+    direct_support_url: str
+
+
+class PriceRadarListResponse(BaseModel):
+    """Response containing price drop opportunities across all eligible purchases."""
+
+    user_id: uuid.UUID
+    total_potential_refund: float
+    active_opportunities_count: int
+    festival_event: str
+    items: list[PriceRadarItem]
+

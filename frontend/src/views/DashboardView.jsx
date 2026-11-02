@@ -117,6 +117,45 @@ export default function DashboardView({
     return [...s].sort()
   }, [purchases])
 
+  // ── Festival Price Drop Radar Calculation ──────────────────────────────────
+  const priceRadarSummary = useMemo(() => {
+    let activeReturnCount = 0
+    let totalPotentialRefund = 0
+    const activeItems = []
+
+    purchases.forEach(p => {
+      const price = Number(p.price) || 0
+      if (price <= 0) return
+
+      let returnEnd = p.warranty_period?.return_window_end_date
+      if (!returnEnd && p.purchase_date) {
+        const d = new Date(p.purchase_date + 'T00:00:00')
+        d.setDate(d.getDate() + 10)
+        returnEnd = d.toISOString().slice(0, 10)
+      }
+
+      const days = returnEnd ? daysUntil(returnEnd) : null
+      const isActive = days !== null && days >= 0
+      const benchmarkDrop = Math.round(price * 0.14)
+
+      if (isActive) {
+        activeReturnCount += 1
+        totalPotentialRefund += benchmarkDrop
+        activeItems.push({
+          purchase: p,
+          daysLeft: days,
+          dropAmount: benchmarkDrop,
+        })
+      }
+    })
+
+    return {
+      activeReturnCount,
+      totalPotentialRefund,
+      activeItems,
+    }
+  }, [purchases])
+
   // ── Filtered & Sorted Purchases ──────────────────────────────────────────────
   const filteredPurchases = useMemo(() => {
     let list = [...purchases]
@@ -411,6 +450,73 @@ export default function DashboardView({
             </TiltCard>
           </motion.div>
         </motion.div>
+      )}
+
+      {/* ── Diwali & Festival Sale Price Drop Refund Radar Banner ─────────── */}
+      {!purchasesLoading && purchases.length > 0 && (
+        <GlassCard
+          className="p-4 sm:p-5 border border-cyan-glow/30 bg-gradient-to-r from-cyan-glow/5 via-violet-glow/5 to-transparent"
+          intensity={0.15}
+        >
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-3.5">
+              <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-cyan-glow/20 text-cyan-glow ring-1 ring-cyan-glow/40 shadow-lg shadow-cyan-glow/10">
+                <Icon name="radar" size={22} className="animate-pulse" />
+              </span>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-bold text-fg">
+                    Diwali &amp; Festival Sale Price Drop Refund Radar
+                  </h3>
+                  <span className="rounded-full bg-cyan-glow/15 px-2 py-0.5 text-[0.65rem] font-bold uppercase tracking-wider text-cyan-300 ring-1 ring-cyan-glow/30">
+                    Live Monitor
+                  </span>
+                </div>
+                <p className="mt-1 text-xs text-muted leading-relaxed">
+                  {priceRadarSummary.activeReturnCount > 0 ? (
+                    <>
+                      <span className="font-semibold text-emerald-300">
+                        ⚡ {priceRadarSummary.activeReturnCount} purchases currently within active return window!
+                      </span>{' '}
+                      Estimated{' '}
+                      <span className="font-bold text-cyan-glow">
+                        {fmtCompactINR(priceRadarSummary.totalPotentialRefund)}
+                      </span>{' '}
+                      in recoverable price-difference refunds during festival sale discounts.
+                    </>
+                  ) : (
+                    <>
+                      Monitoring Amazon, Flipkart, Meesho, Croma &amp; Apple festival discounts. When prices drop within your
+                      active return windows, Warranty Radar generates 1-click refund request scripts.
+                    </>
+                  )}
+                </p>
+              </div>
+            </div>
+
+            {priceRadarSummary.activeItems.length > 0 ? (
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => onOpenDetail(priceRadarSummary.activeItems[0].purchase)}
+                className="shrink-0 bg-cyan-glow/20 text-cyan-glow hover:bg-cyan-glow/30 border border-cyan-glow/40"
+              >
+                <Icon name="rupee" size={15} />
+                <span>Claim Refund Script</span>
+              </Button>
+            ) : (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => onOpenDetail(purchases[0])}
+                className="shrink-0"
+              >
+                <Icon name="search" size={14} />
+                <span>Inspect Item Radar</span>
+              </Button>
+            )}
+          </div>
+        </GlassCard>
       )}
 
       {/* ── Interactive Analytics Section ─────────────────────────────────── */}

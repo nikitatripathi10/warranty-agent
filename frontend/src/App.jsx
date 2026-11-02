@@ -1046,6 +1046,11 @@ export default function App() {
                   agentAnswer={agentAnswer}
                   agentLoading={agentLoading}
                   onAgentQuery={handleAgentQuery}
+                  apiBase={API_BASE}
+                  userId={userId}
+                  userEmail={userEmail}
+                  userName={userName}
+                  addToast={addToast}
                 />
               )}
 
