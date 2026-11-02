@@ -220,11 +220,49 @@ def test_price_radar_analysis_and_script():
     assert radar.original_price == 24999.00
     assert radar.current_sale_price == 21999.00
     assert radar.price_drop_amount == 3000.00
-    assert "Amazon India Customer Support" in radar.refund_request_message
+    assert "Amazon" in radar.refund_request_message
     assert "₹3,000.00" in radar.refund_request_message
     assert "active return window" in radar.refund_request_message
 
     list_res = scan_user_purchases_for_price_drops(p.user_id, [p])
     assert list_res.active_opportunities_count == 1
     assert list_res.total_potential_refund > 0
+
+
+def test_hp_support_channel_direct_routing():
+    import uuid
+    from datetime import date
+    from app.models import Purchase
+    from app.services.price_radar import analyze_price_drop
+
+    # HP as Retailer (direct HP purchase)
+    p_hp = Purchase(
+        id=uuid.uuid4(),
+        user_id=uuid.uuid4(),
+        product_name="HP Pavilion 15 Laptop",
+        brand="HP",
+        retailer="HP",
+        purchase_date=date.today(),
+        price=Decimal("62990.00"),
+    )
+    radar_hp = analyze_price_drop(p_hp)
+    assert radar_hp.support_channel_name == "HP Official Support"
+    assert "support.hp.com" in radar_hp.direct_support_url
+    assert "wa.me/912261014560" in radar_hp.whatsapp_url
+
+    # HP device purchased via Amazon India
+    p_amz_hp = Purchase(
+        id=uuid.uuid4(),
+        user_id=uuid.uuid4(),
+        product_name="HP 15s Ryzen 5",
+        brand="HP",
+        retailer="Amazon India",
+        purchase_date=date.today(),
+        price=Decimal("47990.00"),
+    )
+    radar_amz = analyze_price_drop(p_amz_hp)
+    assert "amazon.in" in radar_amz.direct_support_url
+    assert "support.hp.com" in radar_amz.brand_support_url
+    assert "wa.me/912261014560" in radar_amz.brand_whatsapp_url
+
 

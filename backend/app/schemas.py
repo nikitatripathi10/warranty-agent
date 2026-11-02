@@ -317,6 +317,11 @@ class PriceRadarItem(BaseModel):
     festival_event: str
     refund_request_message: str
     direct_support_url: str
+    support_channel_name: str = "Customer Support"
+    whatsapp_url: Optional[str] = None
+    brand_support_url: Optional[str] = None
+    brand_support_name: Optional[str] = None
+    brand_whatsapp_url: Optional[str] = None
 
 
 class PriceRadarListResponse(BaseModel):

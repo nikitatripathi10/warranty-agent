@@ -8,6 +8,8 @@ during active return windows (7-14 days), and generates automated price-differen
 
 from __future__ import annotations
 
+import re
+import urllib.parse
 import uuid
 from datetime import date, timedelta
 from typing import Optional
@@ -16,26 +18,160 @@ from app.models import Purchase
 from app.schemas import PriceRadarItem, PriceRadarListResponse
 
 
-# Direct support links by retailer
-RETAILER_SUPPORT_URLS = {
-    "amazon": "https://www.amazon.in/gp/help/customer/contact-us",
-    "flipkart": "https://www.flipkart.com/helpcentre",
-    "croma": "https://www.croma.com/helpAndSupport",
-    "reliance": "https://www.reliancedigital.in/content/contact-us",
-    "myntra": "https://www.myntra.com/contactus",
-    "apple": "https://support.apple.com/en-in",
-    "samsung": "https://www.samsung.com/in/support/",
-}
+def _match_vendor(name: Optional[str]) -> Optional[dict]:
+    if not name:
+        return None
+    s = name.lower().strip()
+    words = set(re.findall(r"[a-z0-9]+", s))
 
+    # Brands & Manufacturers
+    if "hp" in words or "hewlett" in words or "hpshopping" in s:
+        return {
+            "name": "HP Official Support",
+            "chat_url": "https://support.hp.com/in-en/contact",
+            "whatsapp_url": "https://wa.me/912261014560?text=Hi%20HP%20Support%2C%20I%20need%20assistance%20with%20my%20HP%20device",
+        }
+    if "dell" in words:
+        return {
+            "name": "Dell Support",
+            "chat_url": "https://www.dell.com/support/inc/en/in/contactus",
+            "whatsapp_url": "https://wa.me/918000404455?text=Hi%20Dell%20Support",
+        }
+    if "lenovo" in words:
+        return {
+            "name": "Lenovo Support",
+            "chat_url": "https://pcsupport.lenovo.com/in/en/contact-us",
+            "whatsapp_url": "https://wa.me/918067916666?text=Hi%20Lenovo%20Support",
+        }
+    if "asus" in words:
+        return {
+            "name": "Asus Support",
+            "chat_url": "https://www.asus.com/in/support/contact/",
+            "whatsapp_url": "https://wa.me/919901234567?text=Hi%20Asus%20Support",
+        }
+    if "acer" in words:
+        return {
+            "name": "Acer Support",
+            "chat_url": "https://www.acer.com/in-en/support/contact-acer",
+            "whatsapp_url": None,
+        }
+    if "apple" in words:
+        return {
+            "name": "Apple Support",
+            "chat_url": "https://getsupport.apple.com/",
+            "whatsapp_url": None,
+        }
+    if "samsung" in words:
+        return {
+            "name": "Samsung Support",
+            "chat_url": "https://www.samsung.com/in/support/",
+            "whatsapp_url": "https://wa.me/91180057267864?text=Hi%20Samsung%20Support",
+        }
+    if "boat" in words:
+        return {
+            "name": "boAt Support",
+            "chat_url": "https://support.boat-lifestyle.com/",
+            "whatsapp_url": "https://wa.me/912269181920?text=Hi%20boAt%20Support",
+        }
+    if "noise" in words:
+        return {
+            "name": "Noise Support",
+            "chat_url": "https://help.gonoise.com/",
+            "whatsapp_url": "https://wa.me/918882132132?text=Hi%20Noise%20Support",
+        }
+    if "oneplus" in words:
+        return {
+            "name": "OnePlus Support",
+            "chat_url": "https://www.oneplus.in/support",
+            "whatsapp_url": "https://wa.me/919289606888?text=Hi%20OnePlus%20Support",
+        }
+    if "xiaomi" in words or "mi" in words or "redmi" in words:
+        return {
+            "name": "Xiaomi Support",
+            "chat_url": "https://www.mi.com/in/service/support/",
+            "whatsapp_url": "https://wa.me/918861826386?text=Hi%20Xiaomi%20Support",
+        }
+    if "realme" in words:
+        return {
+            "name": "Realme Support",
+            "chat_url": "https://www.realme.com/in/support",
+            "whatsapp_url": None,
+        }
+    if "lg" in words:
+        return {
+            "name": "LG Support",
+            "chat_url": "https://www.lg.com/in/support/contact-us/chat-email/",
+            "whatsapp_url": "https://wa.me/919711709999?text=Hi%20LG%20Support",
+        }
+    if "sony" in words:
+        return {
+            "name": "Sony Support",
+            "chat_url": "https://web.sony-asia.com/in/contact-us/",
+            "whatsapp_url": "https://wa.me/918591414040?text=Hi%20Sony%20Support",
+        }
 
-def _get_support_url(retailer: Optional[str]) -> str:
-    if not retailer:
-        return "https://www.amazon.in/gp/help/customer/contact-us"
-    r = retailer.lower()
-    for key, url in RETAILER_SUPPORT_URLS.items():
-        if key in r:
-            return url
-    return "https://www.amazon.in/gp/help/customer/contact-us"
+    # Retailers & E-Commerce Platforms
+    if "amazon" in words:
+        return {
+            "name": "Amazon Customer Service",
+            "chat_url": "https://www.amazon.in/hz/contact-us/foresight/hubgateway",
+            "whatsapp_url": None,
+        }
+    if "flipkart" in words:
+        return {
+            "name": "Flipkart Help Centre",
+            "chat_url": "https://www.flipkart.com/helpcentre",
+            "whatsapp_url": None,
+        }
+    if "croma" in words:
+        return {
+            "name": "Croma Support",
+            "chat_url": "https://www.croma.com/helpAndSupport",
+            "whatsapp_url": "https://wa.me/917207666000?text=Hi%20Croma%20Support",
+        }
+    if "reliance" in words or "jiomart" in words:
+        return {
+            "name": "Reliance Digital Support",
+            "chat_url": "https://www.reliancedigital.in/content/contact-us",
+            "whatsapp_url": "https://wa.me/917977912345?text=Hi%20Reliance%20Digital",
+        }
+    if "myntra" in words:
+        return {
+            "name": "Myntra Help Centre",
+            "chat_url": "https://www.myntra.com/contactus",
+            "whatsapp_url": None,
+        }
+    if "meesho" in words:
+        return {
+            "name": "Meesho Support",
+            "chat_url": "https://www.meesho.com/support",
+            "whatsapp_url": None,
+        }
+    if "tatacliq" in words or "cliq" in words:
+        return {
+            "name": "Tata CLiQ Support",
+            "chat_url": "https://www.tatacliq.com/help-centre",
+            "whatsapp_url": None,
+        }
+    if "blinkit" in words:
+        return {
+            "name": "Blinkit Support",
+            "chat_url": "https://blinkit.com/faq",
+            "whatsapp_url": None,
+        }
+    if "zepto" in words:
+        return {
+            "name": "Zepto Support",
+            "chat_url": "https://www.zeptonow.com/support",
+            "whatsapp_url": None,
+        }
+    if "swiggy" in words:
+        return {
+            "name": "Swiggy Support",
+            "chat_url": "https://www.swiggy.com/support",
+            "whatsapp_url": None,
+        }
+    return None
 
 
 def analyze_price_drop(
@@ -67,7 +203,7 @@ def analyze_price_drop(
     if manual_sale_price is not None and manual_sale_price > 0:
         current_sale = round(manual_sale_price, 2)
     elif original_price > 0:
-        # Realistic festive sale price reduction (approx. 14% benchmark drop rounded to standard retail psychological pricing)
+        # Realistic festive sale price reduction (~14% benchmark drop)
         benchmark_drop = round(original_price * 0.14)
         current_sale = max(0.0, round(original_price - benchmark_drop, 2))
     else:
@@ -80,10 +216,38 @@ def analyze_price_drop(
     inv_id = purchase.source_file_ref or purchase.source_email_id or f"ORD-{str(purchase.id)[:8].upper()}"
     return_end_str = return_end.strftime("%d %b %Y") if return_end else None
 
+    # Resolve primary and brand support channels
+    retailer_ch = _match_vendor(purchase.retailer)
+    brand_ch = _match_vendor(purchase.brand)
+
+    if retailer_ch:
+        primary_ch = retailer_ch
+    elif brand_ch:
+        primary_ch = brand_ch
+    else:
+        v_name = (purchase.retailer or purchase.brand or "Customer Support").strip()
+        encoded = urllib.parse.quote_plus(f"{v_name} customer support chat india")
+        primary_ch = {
+            "name": f"{v_name.title()} Support",
+            "chat_url": f"https://www.google.com/search?q={encoded}",
+            "whatsapp_url": None,
+        }
+
+    # Brand secondary channel (if brand is distinct from retailer, e.g. HP laptop bought on Amazon)
+    brand_support_url = None
+    brand_support_name = None
+    brand_whatsapp_url = None
+    if brand_ch and brand_ch.get("chat_url") != primary_ch.get("chat_url"):
+        brand_support_url = brand_ch["chat_url"]
+        brand_support_name = brand_ch["name"]
+        brand_whatsapp_url = brand_ch.get("whatsapp_url")
+
+    target_name = primary_ch.get("name") or retailer
+
     # Automated Customer Support Price Difference Refund Script
     if is_active:
         refund_message = (
-            f"Hello {retailer} Customer Support Team,\n\n"
+            f"Hello {target_name} Team,\n\n"
             f"I recently purchased '{product_name}' on {p_date_str} for ₹{original_price:,.2f} "
             f"(Order/Invoice Ref: {inv_id}).\n\n"
             f"I noticed that during the active {default_festival_name} sale, the exact same item is currently "
@@ -96,7 +260,7 @@ def analyze_price_drop(
         )
     else:
         refund_message = (
-            f"Hello {retailer} Customer Support Team,\n\n"
+            f"Hello {target_name} Team,\n\n"
             f"I purchased '{product_name}' on {p_date_str} for ₹{original_price:,.2f} (Ref: {inv_id}). "
             f"I noticed the price has significantly dropped to ₹{current_sale:,.2f} (a difference of ₹{drop_amount:,.2f}). "
             f"As a loyal customer, could you please review my order for a price-match goodwill gesture or store credit?\n\n"
@@ -118,7 +282,12 @@ def analyze_price_drop(
         days_left_in_return_window=days_left,
         festival_event=default_festival_name,
         refund_request_message=refund_message,
-        direct_support_url=_get_support_url(purchase.retailer),
+        direct_support_url=primary_ch["chat_url"],
+        support_channel_name=primary_ch["name"],
+        whatsapp_url=primary_ch.get("whatsapp_url"),
+        brand_support_url=brand_support_url,
+        brand_support_name=brand_support_name,
+        brand_whatsapp_url=brand_whatsapp_url,
     )
 
 

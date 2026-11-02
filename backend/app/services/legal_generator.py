@@ -182,3 +182,4 @@ Purchased {product_name} on {purchase_date_str} for {price_val} via {retailer}. 
         edaakhil_guidance=edaakhil_guidance,
         portal_links=portal_links,
     )
+

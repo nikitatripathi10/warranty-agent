@@ -167,27 +167,77 @@ export default function PriceDropRadarCard({
           </div>
 
           {/* Action Footer */}
-          <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
-            <div className="text-[0.68rem] text-muted">
-              {radar.is_return_window_active
-                ? 'Tip: E-commerce platforms routinely issue price difference credits rather than processing full returns.'
-                : 'Tip: Customer support agents can issue Amazon Pay / Flipkart Gift cards as goodwill gestures.'}
+          <div className="flex flex-col gap-3 pt-1">
+            <div className="flex flex-wrap items-center justify-between gap-2 text-[0.68rem] text-muted">
+              <span>
+                {radar.is_return_window_active
+                  ? '💡 Tip: Platforms routinely issue price-difference wallet credits rather than processing full returns.'
+                  : '💡 Tip: Customer service agents can issue gift cards or store credit as customer goodwill.'}
+              </span>
+              {radar.direct_support_url?.includes('amazon.in') && (
+                <span className="text-cyan-300">
+                  On Amazon: Click &ldquo;Chat with us&rdquo; or select your item in Customer Service Hub to paste your script.
+                </span>
+              )}
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center justify-end gap-2.5">
               <Button variant="secondary" size="sm" onClick={copyScript}>
                 <Icon name={copied ? 'check' : 'copy'} size={14} />
                 <span>{copied ? 'Copied' : 'Copy Script'}</span>
               </Button>
-              <a
-                href={radar.direct_support_url}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1.5 rounded-xl bg-cyan-glow/20 px-4 py-2 text-xs font-semibold text-cyan-glow hover:bg-cyan-glow/30 transition"
-              >
-                <span>Open {purchase.retailer || 'Retailer'} Chat</span>
-                <Icon name="externalLink" size={13} />
-              </a>
+
+              {/* Primary Retailer / Support Chat */}
+              {radar.direct_support_url && (
+                <a
+                  href={radar.direct_support_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-cyan-glow/20 px-3.5 py-2 text-xs font-semibold text-cyan-glow hover:bg-cyan-glow/30 transition shadow-sm"
+                >
+                  <span>Open {radar.support_channel_name || purchase.retailer || 'Support'} Chat</span>
+                  <Icon name="externalLink" size={13} />
+                </a>
+              )}
+
+              {/* Primary WhatsApp Chat (e.g. HP Official WhatsApp +91 22 6101 4560) */}
+              {radar.whatsapp_url && (
+                <a
+                  href={radar.whatsapp_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-500/20 px-3.5 py-2 text-xs font-semibold text-emerald-300 hover:bg-emerald-500/30 transition shadow-sm border border-emerald-500/30"
+                >
+                  <span>WhatsApp Chat 💬</span>
+                  <Icon name="externalLink" size={13} />
+                </a>
+              )}
+
+              {/* Brand Secondary Channel (e.g. HP Support when purchased from Amazon) */}
+              {radar.brand_support_url && (
+                <a
+                  href={radar.brand_support_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-violet-500/20 px-3.5 py-2 text-xs font-semibold text-violet-300 hover:bg-violet-500/30 transition shadow-sm border border-violet-500/30"
+                >
+                  <span>Open {radar.brand_support_name || purchase.brand || 'Brand'} Support</span>
+                  <Icon name="externalLink" size={13} />
+                </a>
+              )}
+
+              {/* Brand WhatsApp (if different from primary) */}
+              {radar.brand_whatsapp_url && !radar.whatsapp_url && (
+                <a
+                  href={radar.brand_whatsapp_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-500/20 px-3.5 py-2 text-xs font-semibold text-emerald-300 hover:bg-emerald-500/30 transition shadow-sm border border-emerald-500/30"
+                >
+                  <span>{purchase.brand || 'Brand'} WhatsApp 💬</span>
+                  <Icon name="externalLink" size={13} />
+                </a>
+              )}
             </div>
           </div>
         </div>
@@ -195,3 +245,4 @@ export default function PriceDropRadarCard({
     </GlassCard>
   )
 }
+
