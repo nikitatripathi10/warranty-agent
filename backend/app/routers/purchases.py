@@ -64,6 +64,15 @@ _INVALID_VENDORS = {
 }
 
 
+def _normalize_name_for_dedup(name: str | None) -> str:
+    if not name:
+        return ""
+    import re
+    s = name.lower().strip()
+    s = re.sub(r"[^\w\s]", "", s)
+    return " ".join(s.split())
+
+
 def _is_genuine_purchase_row(purchase: Purchase) -> bool:
     """
     Return True only if the purchase row represents a genuine scanned/extracted
@@ -163,26 +172,61 @@ def list_purchases(
 
     all_rows = query.all()
 
-    # Automatically purge any invalid, unnamed, unknown-retailer, or demo records
+    # Automatically purge any invalid, unnamed, unknown-retailer, demo, or DUPLICATE records
     purchases: list[Purchase] = []
+    seen_dedup_keys: dict[str, Purchase] = {}
     purged_count = 0
+
     for row in all_rows:
-        if _is_genuine_purchase_row(row):
-            purchases.append(row)
-        else:
+        if not _is_genuine_purchase_row(row):
             try:
                 db.delete(row)
                 purged_count += 1
             except Exception as exc:
                 logger.warning("Failed to purge invalid purchase row %s: %s", row.id, exc)
+            continue
+
+        norm_name = _normalize_name_for_dedup(row.product_name)
+        norm_vendor = (normalize_vendor(row.retailer) or row.retailer or row.brand or "").lower().strip()
+        date_str = row.purchase_date.isoformat() if row.purchase_date else ""
+        price_str = f"{row.price:.2f}" if row.price is not None else ""
+
+        dedup_key = f"{norm_name}|{norm_vendor}|{date_str or price_str}"
+        loose_key = f"{norm_name}|{norm_vendor}" if len(norm_name) >= 5 and norm_vendor else None
+
+        if dedup_key in seen_dedup_keys or (loose_key and loose_key in seen_dedup_keys):
+            primary = seen_dedup_keys.get(dedup_key) or seen_dedup_keys[loose_key]
+            # Merge file references and extended warranty info into primary if missing
+            if row.source_file_ref and not primary.source_file_ref:
+                primary.source_file_ref = row.source_file_ref
+            if row.warranty_period and primary.warranty_period:
+                if row.warranty_period.warranty_end_date and (
+                    not primary.warranty_period.warranty_end_date
+                    or row.warranty_period.warranty_end_date > primary.warranty_period.warranty_end_date
+                ):
+                    primary.warranty_period.warranty_end_date = row.warranty_period.warranty_end_date
+                if row.warranty_period.source_snippet and "Additional Warranty" in row.warranty_period.source_snippet:
+                    primary.warranty_period.source_snippet = row.warranty_period.source_snippet
+
+            try:
+                db.delete(row)
+                purged_count += 1
+                logger.info("Purged duplicate purchase row %s on dashboard fetch (matches %s)", row.id, primary.id)
+            except Exception as exc:
+                logger.warning("Failed to delete duplicate purchase row %s: %s", row.id, exc)
+        else:
+            seen_dedup_keys[dedup_key] = row
+            if loose_key:
+                seen_dedup_keys[loose_key] = row
+            purchases.append(row)
 
     if purged_count > 0:
         try:
             db.commit()
-            logger.info("Purged %d invalid/unnamed/demo purchase rows for user %s", purged_count, user_id)
+            logger.info("Purged %d duplicate or invalid purchase rows for user %s", purged_count, user_id)
         except Exception as exc:
             db.rollback()
-            logger.warning("Rollback during invalid row purge for user %s: %s", user_id, exc)
+            logger.warning("Rollback during row purge for user %s: %s", user_id, exc)
 
     # Sort
     if sort_by == "urgency":

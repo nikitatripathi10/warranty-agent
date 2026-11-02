@@ -342,19 +342,34 @@ export default function App() {
 
       const validList = []
       const invalidOrDeletedIds = []
+      const seenKeys = new Set()
 
       for (const item of rawList) {
         if (!item?.id) continue
         if (deletedIds.has(item.id) || !isGenuinePurchase(item)) {
           invalidOrDeletedIds.push(item.id)
+          continue
+        }
+
+        // Deduplication: normalized product_name + vendor + (date or price)
+        const normName = (item.product_name || '').trim().toLowerCase().replace(/[^\w\s]/g, '').replace(/\s+/g, ' ')
+        const normVendor = (item.retailer || item.brand || '').trim().toLowerCase()
+        const key = `${normName}|${normVendor}|${item.purchase_date || item.price || ''}`
+        const looseKey = normName.length >= 5 && normVendor ? `${normName}|${normVendor}` : null
+
+        if (seenKeys.has(key) || (looseKey && seenKeys.has(looseKey))) {
+          // Extra duplicate row: mark for background deletion in DB so it never shows again
+          invalidOrDeletedIds.push(item.id)
         } else {
+          seenKeys.add(key)
+          if (looseKey) seenKeys.add(looseKey)
           validList.push(item)
         }
       }
 
       setPurchases(validList)
 
-      // Permanently purge any unnamed, unknown-retailer, demo, or previously deleted items from DB
+      // Permanently purge any unnamed, unknown-retailer, demo, duplicate, or previously deleted items from DB
       if (invalidOrDeletedIds.length > 0) {
         Promise.allSettled(
           invalidOrDeletedIds.map(id =>
@@ -380,14 +395,19 @@ export default function App() {
       if (res.ok) {
         const deletedIds = getDeletedPurchaseIds(userId)
         const rawAlerts = Array.isArray(data.alerts) ? data.alerts : []
-        const validAlerts = rawAlerts.filter(a => {
-          if (!a || deletedIds.has(a.purchase_id)) return false
+        const seenAlertKeys = new Set()
+        const validAlerts = []
+        for (const a of rawAlerts) {
+          if (!a || deletedIds.has(a.purchase_id)) continue
           const name = String(a.product_name || '').trim()
           const vendor = String(a.retailer || a.brand || '').trim()
-          if (!name || INVALID_PRODUCT_NAMES.has(name.toLowerCase())) return false
-          if (!vendor || INVALID_VENDORS.has(vendor.toLowerCase())) return false
-          return true
-        })
+          if (!name || INVALID_PRODUCT_NAMES.has(name.toLowerCase())) continue
+          if (!vendor || INVALID_VENDORS.has(vendor.toLowerCase())) continue
+          const aKey = `${a.purchase_id}|${a.alert_type}|${a.fire_date}`
+          if (seenAlertKeys.has(aKey)) continue
+          seenAlertKeys.add(aKey)
+          validAlerts.push(a)
+        }
         setAlerts(validAlerts)
       }
     } catch {

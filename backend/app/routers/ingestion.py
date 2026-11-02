@@ -33,7 +33,7 @@ from google.oauth2.credentials import Credentials
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import Purchase, User, WarrantyPeriod
+from app.models import Alert, Purchase, User, WarrantyPeriod
 from app.schemas import IngestionSummary, PurchaseOut, UploadResponse
 from app.services.encryption import decrypt_token
 from app.services.extractor_llm import extract_with_llm
@@ -243,6 +243,66 @@ def _compute_return_window_end(purchase_date: Optional[date], days: Optional[int
     return None
 
 
+def _normalize_name_for_dedup(name: Optional[str]) -> str:
+    if not name:
+        return ""
+    import re
+    s = name.lower().strip()
+    s = re.sub(r"[^\w\s]", "", s)
+    return " ".join(s.split())
+
+
+def _find_existing_duplicate_purchase(
+    db: Session,
+    user_id: uuid.UUID,
+    result: ExtractionResult,
+    source_file_ref: Optional[str] = None,
+) -> Optional[Purchase]:
+    """
+    Search for an existing purchase row belonging to this user that matches
+    the extracted details (same product name and retailer/vendor, date, price, or file ref).
+    """
+    new_norm_name = _normalize_name_for_dedup(result.product_name)
+    if not new_norm_name:
+        return None
+
+    new_vendor = (normalize_vendor(result.retailer) or result.retailer or result.brand or "").lower().strip()
+
+    candidates = db.query(Purchase).filter(Purchase.user_id == user_id).all()
+    for p in candidates:
+        # Check identical source_file_ref
+        if source_file_ref and p.source_file_ref and source_file_ref == p.source_file_ref:
+            return p
+
+        p_norm_name = _normalize_name_for_dedup(p.product_name)
+        if not p_norm_name:
+            continue
+
+        names_match = (
+            p_norm_name == new_norm_name
+            or (len(p_norm_name) >= 6 and len(new_norm_name) >= 6 and (p_norm_name in new_norm_name or new_norm_name in p_norm_name))
+        )
+        if not names_match:
+            continue
+
+        p_vendor = (normalize_vendor(p.retailer) or p.retailer or p.brand or "").lower().strip()
+        vendors_match = bool(p_vendor and new_vendor and (p_vendor == new_vendor or p_vendor in new_vendor or new_vendor in p_vendor))
+
+        dates_match = bool(p.purchase_date and result.purchase_date and p.purchase_date == result.purchase_date)
+
+        prices_match = False
+        if p.price is not None and result.price is not None:
+            try:
+                prices_match = abs(float(p.price) - float(result.price)) < 0.01
+            except Exception:
+                prices_match = False
+
+        if dates_match or prices_match or vendors_match:
+            return p
+
+    return None
+
+
 def _persist_purchase(
     db: Session,
     user_id: uuid.UUID,
@@ -251,9 +311,68 @@ def _persist_purchase(
     source_email_id: Optional[str] = None,
     source_file_ref: Optional[str] = None,
 ) -> Purchase:
-    """Create and commit a Purchase + WarrantyPeriod row from an ExtractionResult."""
+    """Create and commit a Purchase + WarrantyPeriod row from an ExtractionResult, updating in-place if duplicate."""
     # Normalise retailer to canonical form before saving
     canonical_retailer = normalize_vendor(result.retailer) or result.retailer
+
+    # Deduplication check: check if a matching purchase already exists for this user
+    existing = _find_existing_duplicate_purchase(db, user_id, result, source_file_ref)
+    if existing is not None:
+        logger.info(
+            "Duplicate purchase detected for user %s: product=%r (matches purchase %s). Updating in-place to avoid duplicates.",
+            user_id,
+            result.product_name,
+            existing.id,
+        )
+        if canonical_retailer:
+            existing.retailer = canonical_retailer
+        if result.brand and not existing.brand:
+            existing.brand = result.brand
+        if result.purchase_date and not existing.purchase_date:
+            existing.purchase_date = result.purchase_date
+        if result.price and not existing.price:
+            existing.price = result.price
+        if source_file_ref:
+            existing.source_file_ref = source_file_ref
+
+        fallback = apply_category_fallback(
+            product_name=existing.product_name or result.product_name,
+            brand=existing.brand or result.brand,
+            existing_warranty_months=result.warranty_period_months,
+            existing_return_days=result.return_window_days,
+        )
+        w_end = _compute_warranty_end(
+            existing.purchase_date or result.purchase_date, fallback["warranty_period_months"]
+        )
+        r_end = _compute_return_window_end(
+            existing.purchase_date or result.purchase_date, fallback["return_window_days"]
+        )
+        wp = existing.warranty_period
+        if wp is not None:
+            if w_end:
+                wp.warranty_end_date = w_end
+            if r_end:
+                wp.return_window_end_date = r_end
+            if result.source_snippet:
+                wp.source_snippet = result.source_snippet
+            wp.confidence_score = result.confidence
+        else:
+            is_estimated = fallback["is_estimated"] or (result.pass_used == "llm")
+            wp = WarrantyPeriod(
+                purchase_id=existing.id,
+                warranty_end_date=w_end,
+                return_window_end_date=r_end,
+                confidence_score=result.confidence,
+                source_snippet=result.source_snippet or f"[pass={result.pass_used}]",
+                is_estimated=is_estimated,
+            )
+            db.add(wp)
+
+        db.query(Alert).filter(Alert.purchase_id == existing.id).delete()
+        db.commit()
+        db.refresh(existing)
+        create_alerts_for_purchase(db, existing, wp)
+        return existing
 
     purchase = Purchase(
         user_id=user_id,
