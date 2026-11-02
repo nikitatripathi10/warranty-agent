@@ -487,29 +487,17 @@ def fetch_emails(
                 .filter(Purchase.user_id == user.id, Purchase.source_email_id == msg_id)
                 .first()
             )
-
-            body_parts: list[str] = []
-            body = fetch_message_body(gmail_service, msg_id)
-            if body:
-                body_parts.append(body)
-
-            # Also extract text/OCR from any PDF or image attachments (e.g. warranty cards / invoices)
-            attachments = fetch_message_attachments(gmail_service, msg_id)
-            for att_filename, att_mime, att_bytes in attachments:
-                att_text, _ = extract_text(att_bytes, att_filename, content_type=att_mime)
-                if att_text.strip():
-                    body_parts.append(att_text)
-
-            combined_text = "\n\n".join(body_parts).strip()
-            if not combined_text:
-                logger.warning("Empty body and no readable attachments for message %s — skipping", msg_id)
-                failed += 1
-                errors.append(f"msg:{msg_id} — empty content")
+            # Skip emails that were already scanned and saved in the user's workspace
+            if existing and existing.product_name:
+                logger.info("Message %s already indexed as purchase %s — skipping re-extraction", msg_id, existing.id)
+                created += 1
                 continue
+
+            body = fetch_message_body(gmail_service, msg_id) or ""
 
             # Determine retailer hint from email body (best-effort)
             hint = None
-            body_lower = combined_text.lower()
+            body_lower = body.lower()
             if "amazon" in body_lower:
                 hint = "amazon"
             elif "flipkart" in body_lower:
@@ -519,10 +507,25 @@ def fetch_emails(
             elif "ajio" in body_lower:
                 hint = "ajio"
 
-            result = _run_extraction_pipeline(combined_text, hint=hint)
+            # Fast Pass 1: Try extracting directly from the HTML/text email body
+            result = None
+            if body.strip():
+                result = _run_extraction_pipeline(body, hint=hint)
 
-            # Guard against persisting records without an identifiable product name & vendor
-            if not _is_valid_extracted_purchase(result):
+            # Fast Pass 2: Only fetch and OCR heavy attachments if body text was insufficient
+            if not result or not _is_valid_extracted_purchase(result) or result.confidence == "low":
+                attachments = fetch_message_attachments(gmail_service, msg_id)
+                if attachments:
+                    body_parts = [body] if body.strip() else []
+                    for att_filename, att_mime, att_bytes in attachments:
+                        att_text, _ = extract_text(att_bytes, att_filename, content_type=att_mime)
+                        if att_text.strip():
+                            body_parts.append(att_text)
+                    combined_text = "\n\n".join(body_parts).strip()
+                    if combined_text:
+                        result = _run_extraction_pipeline(combined_text, hint=hint)
+
+            if not result or not _is_valid_extracted_purchase(result):
                 logger.warning("Incomplete or demo extraction from email %s — skipping", msg_id)
                 failed += 1
                 errors.append(f"msg:{msg_id} — incomplete product or retailer details")

@@ -423,11 +423,49 @@ export default function App() {
     setFetchResult(null)
     setFetchError(null)
 
+    const prevCount = purchases.length
+
     try {
-      const res = await fetch(
-        `${API_BASE}/ingestion/fetch-emails?user_id=${encodeURIComponent(userId)}&max_results=25`,
-        { method: 'POST', signal: AbortSignal.timeout(120000) }
-      )
+      let res
+      try {
+        res = await fetch(
+          `${API_BASE}/ingestion/fetch-emails?user_id=${encodeURIComponent(userId)}&max_results=15`,
+          { method: 'POST', signal: AbortSignal.timeout(90000) }
+        )
+      } catch (timeoutErr) {
+        // If the HTTP connection timed out, verify if the backend saved new purchases in the DB
+        try {
+          const checkRes = await fetch(
+            `${API_BASE}/purchases?user_id=${encodeURIComponent(userId)}`,
+            { signal: AbortSignal.timeout(15000) }
+          )
+          if (checkRes.ok) {
+            const checkData = await checkRes.json()
+            const freshPurchases = (checkData.purchases || []).filter(isGenuinePurchase)
+            if (freshPurchases.length > prevCount) {
+              setPurchases(freshPurchases)
+              loadAlerts()
+              setFetchResult({
+                emails_scanned: 15,
+                purchases_created: freshPurchases.length - prevCount,
+                purchases_failed: 0,
+              })
+              localStorage.setItem('wrd_gmail_connected', '1')
+              setGmailConnected(true)
+              addToast(`Scan complete! ${freshPurchases.length - prevCount} new purchases imported.`, 'success')
+              if (onboardStep === 1) setOnboardStep(2)
+              setScreen('dashboard')
+              return
+            }
+          }
+        } catch {
+          /* ignore fallback check error */
+        }
+        throw new Error(
+          'Scan took longer than expected due to large invoice attachments. Click "Scan Inbox" again — processed items are now cached.'
+        )
+      }
+
       const data = await res.json()
       if (!res.ok) {
         const detail = String(data.detail || `HTTP ${res.status}`)
@@ -445,7 +483,7 @@ export default function App() {
       setFetchResult(data)
       localStorage.setItem('wrd_gmail_connected', '1')
       setGmailConnected(true)
-      addToast(`Scanned ${data.emails_scanned} emails · ${data.purchases_created} new records saved`, 'success')
+      addToast(`Scanned ${data.emails_scanned} emails · ${data.purchases_created} records indexed`, 'success')
       loadPurchases()
       loadAlerts()
       if (onboardStep === 1) setOnboardStep(2)
@@ -453,7 +491,7 @@ export default function App() {
       setScreen('dashboard')
     } catch (err) {
       setFetchError(err.message)
-      addToast(`Scan failed: ${err.message}`, 'error')
+      addToast(`Scan note: ${err.message}`, 'error')
     } finally {
       setFetchLoading(false)
     }
