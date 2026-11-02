@@ -92,12 +92,12 @@ export default function LandingView({
     uploadFile || additionalUploadFile || (selectedUploadPurchaseId && hasManualAdditional)
   )
 
-  // Identity-only Google sign-in: Google shows the app name and never asks for
-  // Gmail access. Gmail is requested separately once the user wants to scan.
-  const handleGoogleSignIn = () => {
+  // Connecting Google also grants read-only Gmail access, so "Scan Inbox" works
+  // right away instead of asking for a second consent round.
+  const handleConnectGoogle = () => {
     const origin = typeof window !== 'undefined' ? window.location.origin : ''
     const returnParam = origin ? `?return_url=${encodeURIComponent(origin)}` : ''
-    window.location.href = `${apiBase}/auth/google/login${returnParam}`
+    window.location.href = `${apiBase}/auth/gmail/connect${returnParam}`
   }
 
   const handleDirectEmailSubmit = async (e) => {
@@ -247,7 +247,7 @@ export default function LandingView({
 
               <a
                 id="btn-connect-gmail"
-                href={`${apiBase}/auth/google/login${typeof window !== 'undefined' && window.location.origin ? `?return_url=${encodeURIComponent(window.location.origin)}` : ''}`}
+                href={`${apiBase}/auth/gmail/connect${typeof window !== 'undefined' && window.location.origin ? `?return_url=${encodeURIComponent(window.location.origin)}` : ''}`}
                 className="flex w-full items-center justify-center gap-2.5 rounded-xl border border-indigo-400/40 bg-linear-to-r from-indigo-500 to-violet-600 px-6 py-3.5 text-sm font-semibold text-white shadow-[0_8px_24px_-6px_rgba(99,102,241,0.55)] transition hover:from-indigo-400 hover:to-violet-500"
               >
                 <svg width="18" height="18" viewBox="0 0 48 48" style={{ flexShrink: 0 }}>
@@ -355,7 +355,13 @@ export default function LandingView({
             variant="primary"
             size="lg"
             full
-            onClick={isConnected ? onScanInbox : handleGoogleSignIn}
+            onClick={
+              isConnected
+                ? gmailConnected === false && onConnectGmail
+                  ? onConnectGmail
+                  : onScanInbox
+                : handleConnectGoogle
+            }
             disabled={fetchLoading}
           >
             {fetchLoading ? (
@@ -371,6 +377,12 @@ export default function LandingView({
           {!isConnected && (
             <p className="mt-2.5 text-center text-xs text-subtle">
               Clicking above will connect your Google account first to enable inbox scanning.
+            </p>
+          )}
+
+          {isConnected && gmailConnected === false && (
+            <p className="mt-2.5 text-center text-xs text-subtle">
+              Connect Gmail once to enable inbox scanning.
             </p>
           )}
 
@@ -669,7 +681,7 @@ export default function LandingView({
             variant="accent"
             size="lg"
             full
-            onClick={isConnected ? onUpload : handleGoogleSignIn}
+            onClick={isConnected ? onUpload : handleConnectGoogle}
             disabled={!canSubmitUpload || uploadLoading}
           >
             {uploadLoading ? (

@@ -1,21 +1,19 @@
 """
 Google OAuth 2.0 endpoints.
 
-Two separate entry points share one registered redirect URI:
+Two entry points share one registered redirect URI:
 
-  1. GET /auth/google/login    → identity-only sign-in (openid/email/profile).
-                                 Google shows the app name and never asks for
-                                 Gmail access, so normal sign-in is frictionless.
-
-  2. GET /auth/gmail/connect   → explicit Gmail connection (gmail.readonly).
-  3. GET /auth/gmail/callback  → exchange code for tokens, encrypt refresh token,
+  1. GET /auth/gmail/connect   → the flow the app uses: Google sign-in plus
+                                 read-only Gmail access in a single consent.
+  2. GET /auth/gmail/callback  → exchange code for tokens, encrypt refresh token,
                                  upsert user record, return user info.
+  3. GET /auth/google/login    → optional identity-only sign-in
+                                 (openid/email/profile) for clients that do not
+                                 need inbox access.
 
-Splitting the two flows matters because gmail.readonly is a *restricted* scope:
-prompting for it at sign-in makes every new user face a "wants access to your
-Google Account" screen branded only with the raw domain (Google hides the app
-name until brand verification), and it caps sign-in at the 100-user CASA limit.
-Sign-in now asks for identity only; Gmail is requested on demand.
+Requesting gmail.readonly means Google shows the restricted-scope consent screen,
+and an unverified app is displayed by domain only. That is unavoidable until the
+app is served from a custom domain that passes brand verification.
 
 Environment variables required (see .env.example):
   GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URI

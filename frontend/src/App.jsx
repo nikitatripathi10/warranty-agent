@@ -17,8 +17,8 @@ const API_BASE =
   import.meta.env.VITE_API_URL ||
   import.meta.env.VITE_API_BASE_URL ||
   (typeof window !== 'undefined' &&
-  window.location.hostname !== 'localhost' &&
-  window.location.hostname !== '127.0.0.1'
+    window.location.hostname !== 'localhost' &&
+    window.location.hostname !== '127.0.0.1'
     ? 'https://warranty-agent.onrender.com'
     : 'http://localhost:8000')
 
@@ -431,8 +431,8 @@ export default function App() {
       const data = await res.json()
       if (!res.ok) {
         const detail = String(data.detail || `HTTP ${res.status}`)
-        // Identity-only sign-in has no Gmail token yet: send the user through the
-        // Gmail consent flow instead of showing a raw backend error.
+        // Email-only workspaces have no Gmail token yet: start the Gmail consent
+        // flow instead of surfacing a raw backend error.
         if (res.status === 400 && detail.toLowerCase().includes('not connected gmail')) {
           localStorage.setItem('wrd_gmail_connected', '0')
           setGmailConnected(false)
@@ -449,6 +449,8 @@ export default function App() {
       loadPurchases()
       loadAlerts()
       if (onboardStep === 1) setOnboardStep(2)
+      // Land on the dashboard so the imported purchases and alerts are visible.
+      setScreen('dashboard')
     } catch (err) {
       setFetchError(err.message)
       addToast(`Scan failed: ${err.message}`, 'error')
@@ -625,7 +627,7 @@ export default function App() {
         if (data?.purchase?.id) {
           fetch(`${API_BASE}/purchases/${data.purchase.id}?user_id=${encodeURIComponent(userId)}`, {
             method: 'DELETE',
-          }).catch(() => {})
+          }).catch(() => { })
         }
         throw new Error(
           'Could not extract valid product and retailer details from this document. Please upload a clear invoice or warranty card.'
@@ -815,15 +817,8 @@ export default function App() {
     addToast(`Connected to workspace for ${data.email}`, 'success')
   }
 
-  // Identity-only Google sign-in. Google shows the app name here and does not
-  // ask for Gmail access, so new users never hit the restricted-scope screen.
-  function handleGoogleSignIn() {
-    const origin = typeof window !== 'undefined' ? window.location.origin : ''
-    const returnParam = origin ? `?return_url=${encodeURIComponent(origin)}` : ''
-    window.location.href = `${API_BASE}/auth/google/login${returnParam}`
-  }
-
-  // Explicit Gmail authorization, requested only when the user wants to scan.
+  // One Google connect that also grants read-only Gmail access, so "Scan Inbox"
+  // works immediately afterwards instead of prompting for consent a second time.
   function handleConnectGmailAccount() {
     const origin = typeof window !== 'undefined' ? window.location.origin : ''
     const returnParam = origin ? `?return_url=${encodeURIComponent(origin)}` : ''
@@ -875,7 +870,7 @@ export default function App() {
             onToggleTheme={toggleTheme}
             activePalette={activePalette}
             onSelectPalette={handleSelectPalette}
-            onConnect={handleGoogleSignIn}
+            onConnect={handleConnectGmailAccount}
           />
           <main className="flex-1">
             <LandingView
