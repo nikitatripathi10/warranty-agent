@@ -299,16 +299,16 @@ export default function LegalNoticeModal({
               {/* Action Portal Links */}
               <div className="grid gap-3 sm:grid-cols-3">
                 <a
-                  href={result.portal_links.edaakhil_url}
+                  href={result.portal_links.edaakhil_url || 'https://e-jagriti.gov.in/'}
                   target="_blank"
                   rel="noreferrer"
                   className="glass hover:bg-glass-hover flex items-center justify-between rounded-xl p-3 text-xs text-fg transition"
                 >
                   <div className="flex items-center gap-2">
                     <Icon name="externalLink" size={15} className="text-rose-400" />
-                    <span className="font-medium">e-Daakhil Portal</span>
+                    <span className="font-medium">e-Jagriti (e-Daakhil)</span>
                   </div>
-                  <span className="text-[0.68rem] text-subtle">edaakhil.nic.in</span>
+                  <span className="text-[0.68rem] text-subtle">e-jagriti.gov.in</span>
                 </a>
 
                 <a

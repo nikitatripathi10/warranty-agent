@@ -125,8 +125,8 @@ UNDER INSTRUCTIONS AND WRITTEN AUTHORITY AS THE AGGRIEVED CONSUMER, THIS FORMAL 
    (b) Issue an immediate full refund of the total purchase amount of {price_val} directly to the consumer's bank account, along with interest at the rate of 18% per annum from the date of claim till realization;
    (c) AND pay a sum of ₹10,000/- (Rupees Ten Thousand Only) towards compensation for mental agony, harassment, and loss of productivity.
 
-5. DEFAULT & PROCEEDINGS BEFORE CONSUMER COMMISSION (E-DAAKHIL):
-   PLEASE TAKE CAREFUL NOTICE that should you fail or neglect to comply with this notice within the stipulated 15-day period, I shall be constrained to initiate formal statutory proceedings against you before the competent District Consumer Disputes Redressal Commission via the online e-Daakhil portal (Section 35) and register an official complaint with the National Consumer Helpline (NCH 1915), holding you jointly and severally liable for all consequential damages, litigation costs, and penal consequences.
+5. DEFAULT & PROCEEDINGS BEFORE CONSUMER COMMISSION (E-JAGRITI / E-DAAKHIL):
+   PLEASE TAKE CAREFUL NOTICE that should you fail or neglect to comply with this notice within the stipulated 15-day period, I shall be constrained to initiate formal statutory proceedings against you before the competent District Consumer Disputes Redressal Commission via the online e-Jagriti / e-Daakhil portal (Section 35) and register an official complaint with the National Consumer Helpline (NCH 1915), holding you jointly and severally liable for all consequential damages, litigation costs, and penal consequences.
 
 Yours faithfully,
 
@@ -154,14 +154,14 @@ Grievance Summary:
 Purchased {product_name} on {purchase_date_str} for {price_val} via {retailer}. Product suffered functional defect: {issue_desc}. Warranty claim was improperly denied/delayed by {brand}. Formal 15-day demand notice (Ref: {notice_ref}) served. Seeking immediate replacement or full refund with compensation."""
 
     edaakhil_guidance = {
-        "step_1": "Visit e-Daakhil portal (edaakhil.nic.in) and register/login using Aadhaar or Mobile OTP.",
+        "step_1": "Visit e-Jagriti / e-Daakhil portal (e-jagriti.gov.in) and register/login using Aadhaar or Mobile OTP.",
         "step_2": "Select your local District Consumer Commission (District where you reside or where the purchase was made).",
         "step_3": "Upload: (1) Complaint Petition using this draft, (2) Purchase Invoice, (3) Service Center communication, (4) Copy of this 15-Day Legal Notice with postal/email receipt.",
         "step_4": "Pay zero court fees for consumer claims up to ₹5 Lakhs (Nil fee under Consumer Protection Act 2019).",
     }
 
     portal_links = {
-        "edaakhil_url": "https://edaakhil.nic.in/",
+        "edaakhil_url": "https://e-jagriti.gov.in/",
         "nch_helpline_url": "https://consumerhelpline.gov.in/",
         "nch_toll_free_number": "1915",
         "nch_whatsapp_sms": "8800001915",

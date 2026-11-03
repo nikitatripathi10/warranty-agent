@@ -76,7 +76,7 @@ ClaimGuard AI packages 11 core features that provide complete protection through
 ### Feature 6: National Consumer Helpline (NCH 1915) & e-Daakhil Filing Package
 - For unresolved grievances:
   - Automatically formats the dispute into a structured complaint draft ready for the **National Consumer Helpline (NCH 1915 / consumerhelpline.gov.in)**.
-  - Provides a checklist and step-by-step guidance for filing in District Consumer Disputes Redressal Commissions via **e-Daakhil (edaakhil.nic.in)** without hiring an advocate.
+  - Provides a checklist and step-by-step guidance for filing in District Consumer Disputes Redressal Commissions via **e-Jagriti / e-Daakhil (e-jagriti.gov.in)** without hiring an advocate.
 
 ### Feature 7: Direct Store Listing & Official Brand Support Routing
 - Displays a direct shortcut to open the exact product listing on Amazon, Flipkart, or HP to check live sale pricing or initiate returns.
@@ -219,7 +219,8 @@ sequenceDiagram
 * **LLM (Large Language Model)**: An advanced AI system (such as Google Gemini) that understands natural human language, reads unstructured text, and drafts coherent responses.
 * **ORM (Object-Relational Mapping)**: A tool that translates Python objects into database rows and columns automatically.
 * **Pre-Litigation Legal Notice**: A formal written warning sent to a company before filing a lawsuit, outlining the legal violations and giving them 15 days to resolve the matter.
-* **e-Daakhil**: The official portal launched by the Government of India enabling citizens to file consumer complaints online without physically visiting a consumer court.
+* **e-Jagriti (formerly e-Daakhil)**: The official unified portal launched by the Department of Consumer Affairs, Government of India (`e-jagriti.gov.in`) enabling citizens to file consumer complaints online directly to District, State, or National Consumer Commissions without physically visiting a consumer court.
 
 ---
 *Document Version: 1.0.0 — ClaimGuard AI Product Documentation*
+

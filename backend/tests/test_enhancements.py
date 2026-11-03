@@ -185,7 +185,7 @@ def test_legal_notice_generation():
     assert "84-87" in res.legal_notice_text
     assert "Sony" in res.legal_notice_text
     assert "₹26,990.00" in res.legal_notice_text
-    assert "edaakhil.nic.in" in res.portal_links["edaakhil_url"]
+    assert "e-jagriti.gov.in" in res.portal_links["edaakhil_url"] or "edaakhil" in res.portal_links["edaakhil_url"]
     assert "1915" in res.portal_links["nch_toll_free_number"]
     assert "Nikita Tripathi" in res.nch_grievance_draft
 
