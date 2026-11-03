@@ -318,6 +318,7 @@ class PriceRadarItem(BaseModel):
     refund_request_message: str
     direct_support_url: str
     support_channel_name: str = "Customer Support"
+    product_store_url: Optional[str] = None
     whatsapp_url: Optional[str] = None
     brand_support_url: Optional[str] = None
     brand_support_name: Optional[str] = None

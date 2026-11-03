@@ -1,5 +1,5 @@
 import { motion } from 'motion/react'
-import { fmt, fmtDate, fmtPrice, daysUntil, urgencyColor, urgencyLabel, parseAdditionalWarranty } from '../lib/format'
+import { fmt, fmtDate, fmtPrice, daysUntil, urgencyColor, urgencyLabel, parseAdditionalWarranty, getProductStoreUrl } from '../lib/format'
 import { ConfidenceBadge, UrgencyChip, GlassCard } from './ui'
 import Icon from './Icon'
 
@@ -92,6 +92,19 @@ export default function PurchaseCard({ purchase, onSelect, onDelete }) {
               <span className="rounded-md bg-glass px-2 py-0.5 text-[0.68rem] text-muted">
                 👤 {purchase.family_member}
               </span>
+            )}
+            {purchase.product_name && (
+              <a
+                href={getProductStoreUrl(purchase.product_name, purchase.retailer, purchase.brand)}
+                target="_blank"
+                rel="noreferrer"
+                onClick={e => e.stopPropagation()}
+                title={`View ${purchase.product_name} on ${purchase.retailer || 'Store'}`}
+                className="inline-flex items-center gap-1 text-[0.68rem] font-medium text-cyan-glow hover:underline transition ml-auto"
+              >
+                <span>Product Page</span>
+                <Icon name="externalLink" size={11} />
+              </a>
             )}
           </div>
         </div>

@@ -130,4 +130,49 @@ export function parseAdditionalWarranty(snippet) {
   return { additionalWarranty, cleanSnippet }
 }
 
+export function getProductStoreUrl(productName, retailer = '', brand = '') {
+  if (!productName) return '#'
+  const cleanName = String(productName).trim()
+  const q = encodeURIComponent(cleanName)
+  const r = String(retailer || '').toLowerCase()
+  const b = String(brand || '').toLowerCase()
+
+  if (r.includes('amazon') || (!r && b.includes('amazon'))) {
+    return `https://www.amazon.in/s?k=${q}&ref=nb_sb_noss`
+  }
+  if (r.includes('flipkart') || (!r && b.includes('flipkart'))) {
+    return `https://www.flipkart.com/search?q=${q}`
+  }
+  if (r.includes('croma') || (!r && b.includes('croma'))) {
+    return `https://www.croma.com/searchB?q=${q}`
+  }
+  if (r.includes('reliance') || r.includes('jiomart')) {
+    return `https://www.reliancedigital.in/search?q=${q}`
+  }
+  if (r.includes('hp') || b.includes('hp') || r.includes('hewlett')) {
+    return `https://www.hp.com/in-en/shop/catalogsearch/result/?q=${q}`
+  }
+  if (r.includes('dell') || b.includes('dell')) {
+    return `https://www.dell.com/en-in/search/${q}`
+  }
+  if (r.includes('lenovo') || b.includes('lenovo')) {
+    return `https://www.lenovo.com/in/en/search?text=${q}`
+  }
+  if (r.includes('samsung') || b.includes('samsung')) {
+    return `https://www.samsung.com/in/search/?searchvalue=${q}`
+  }
+  if (r.includes('apple') || b.includes('apple')) {
+    return `https://www.apple.com/in/search/${q}?src=globalnav`
+  }
+  if (r.includes('myntra')) {
+    return `https://www.myntra.com/${cleanName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
+  }
+  if (r.includes('meesho')) {
+    return `https://www.meesho.com/search?q=${q}`
+  }
+  const vendorPrefix = retailer || brand ? `${retailer || brand} ` : ''
+  return `https://www.google.com/search?q=${encodeURIComponent(vendorPrefix + cleanName + ' price in india')}`
+}
+
+
 

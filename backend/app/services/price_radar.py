@@ -174,6 +174,41 @@ def _match_vendor(name: Optional[str]) -> Optional[dict]:
     return None
 
 
+def _get_product_store_url(product_name: str, retailer: Optional[str], brand: Optional[str]) -> str:
+    """Generate direct URL to view this specific product on the retailer's store or brand catalog."""
+    q = urllib.parse.quote_plus(product_name.strip())
+    r = (retailer or "").lower()
+    b = (brand or "").lower()
+
+    if "amazon" in r or "amazon" in b:
+        return f"https://www.amazon.in/s?k={q}&ref=nb_sb_noss"
+    if "flipkart" in r or "flipkart" in b:
+        return f"https://www.flipkart.com/search?q={q}"
+    if "croma" in r:
+        return f"https://www.croma.com/searchB?q={q}"
+    if "reliance" in r or "jiomart" in r:
+        return f"https://www.reliancedigital.in/search?q={q}"
+    if "hp" in r or "hp" in b or "hewlett" in r:
+        return f"https://www.hp.com/in-en/shop/catalogsearch/result/?q={q}"
+    if "dell" in r or "dell" in b:
+        return f"https://www.dell.com/en-in/search/{q}"
+    if "lenovo" in r or "lenovo" in b:
+        return f"https://www.lenovo.com/in/en/search?text={q}"
+    if "samsung" in r or "samsung" in b:
+        return f"https://www.samsung.com/in/search/?searchvalue={q}"
+    if "apple" in r or "apple" in b:
+        return f"https://www.apple.com/in/search/{q}?src=globalnav"
+    if "myntra" in r:
+        slug = re.sub(r"[^a-z0-9]+", "-", product_name.lower()).strip("-")
+        return f"https://www.myntra.com/{slug}"
+    if "meesho" in r:
+        return f"https://www.meesho.com/search?q={q}"
+
+    vendor = (retailer or brand or "").strip()
+    search_term = f"{vendor} {product_name}".strip() if vendor else product_name
+    return f"https://www.google.com/search?q={urllib.parse.quote_plus(search_term + ' price in india')}"
+
+
 def analyze_price_drop(
     purchase: Purchase,
     manual_sale_price: Optional[float] = None,
@@ -284,6 +319,7 @@ def analyze_price_drop(
         refund_request_message=refund_message,
         direct_support_url=primary_ch["chat_url"],
         support_channel_name=primary_ch["name"],
+        product_store_url=_get_product_store_url(product_name, purchase.retailer, purchase.brand),
         whatsapp_url=primary_ch.get("whatsapp_url"),
         brand_support_url=brand_support_url,
         brand_support_name=brand_support_name,

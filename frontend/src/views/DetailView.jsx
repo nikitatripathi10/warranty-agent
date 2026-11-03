@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { motion } from 'motion/react'
 import { GlassCard, Button, Field, ConfidenceBadge, UrgencyChip, Spinner } from '../components/ui'
-import { fmt, fmtDate, fmtPrice, daysUntil, parseAdditionalWarranty } from '../lib/format'
+import { fmt, fmtDate, fmtPrice, daysUntil, parseAdditionalWarranty, getProductStoreUrl } from '../lib/format'
 import Icon from '../components/Icon'
 import LegalNoticeModal from '../components/LegalNoticeModal'
 import PriceDropRadarCard from '../components/PriceDropRadarCard'
@@ -66,6 +66,18 @@ export default function DetailView({
             <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-subtle">
               {purchase.purchase_date && <span>Purchased on {fmtDate(purchase.purchase_date)}</span>}
               {purchase.family_member && <span>Assigned to: {purchase.family_member}</span>}
+              {purchase.product_name && (
+                <a
+                  href={getProductStoreUrl(purchase.product_name, purchase.retailer, purchase.brand)}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 font-semibold text-cyan-glow hover:underline transition"
+                  title="Direct link to view this product on the retailer store"
+                >
+                  <span>View Product on {purchase.retailer || purchase.brand || 'Store'}</span>
+                  <Icon name="externalLink" size={12} />
+                </a>
+              )}
             </div>
           </div>
 
@@ -84,7 +96,21 @@ export default function DetailView({
             {/* Metadata Grid */}
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <div className="glass rounded-xl p-3.5">
-                <div className="text-[0.68rem] font-semibold uppercase tracking-wider text-subtle">Amount Paid</div>
+                <div className="flex items-center justify-between text-[0.68rem] font-semibold uppercase tracking-wider text-subtle">
+                  <span>Amount Paid</span>
+                  {purchase.product_name && (
+                    <a
+                      href={getProductStoreUrl(purchase.product_name, purchase.retailer, purchase.brand)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-cyan-glow hover:underline flex items-center gap-0.5 text-[0.65rem] font-normal"
+                      title="Compare live store price"
+                    >
+                      <span>Check live</span>
+                      <Icon name="externalLink" size={10} />
+                    </a>
+                  )}
+                </div>
                 <div className="mt-1 text-lg font-bold text-cyan-glow">{fmtPrice(purchase.price)}</div>
               </div>
 

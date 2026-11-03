@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { GlassCard, Button, Spinner } from './ui'
 import Icon from './Icon'
-import { fmtPrice } from '../lib/format'
+import { fmtPrice, getProductStoreUrl } from '../lib/format'
 
 function computeInstantRadar(purchase, manualSalePrice = null) {
   if (!purchase) return null
@@ -112,6 +112,7 @@ function computeInstantRadar(purchase, manualSalePrice = null) {
     refund_request_message: refundMessage,
     direct_support_url: directSupportUrl,
     support_channel_name: supportName,
+    product_store_url: getProductStoreUrl(productName, retailer, brand),
     whatsapp_url: whatsappUrl,
     brand_support_url: brandSupportUrl,
     brand_support_name: brandSupportName,
@@ -305,20 +306,33 @@ export default function PriceDropRadarCard({
             </div>
 
             <div className="flex flex-wrap items-center justify-end gap-2.5">
+              {/* 🛒 Direct Product Link: Opens the exact product listing on Amazon/Flipkart/HP Store */}
+              <a
+                href={radar.product_store_url || getProductStoreUrl(purchase.product_name, purchase.retailer, purchase.brand)}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1.5 rounded-xl bg-cyan-glow/25 border border-cyan-glow/60 px-4 py-2 text-xs font-bold text-cyan-glow hover:bg-cyan-glow/35 transition shadow-sm hover:scale-[1.02]"
+                title="Direct link to view this product listing on the store"
+              >
+                <span>View Product on {purchase.retailer || purchase.brand || 'Store'}</span>
+                <Icon name="externalLink" size={13} />
+              </a>
+
               <Button variant="secondary" size="sm" onClick={copyScript}>
                 <Icon name={copied ? 'check' : 'copy'} size={14} />
-                <span>{copied ? 'Copied' : 'Copy Script'}</span>
+                <span>{copied ? 'Copied' : 'Copy Refund Script'}</span>
               </Button>
 
-              {/* Primary Retailer / Support Chat */}
+              {/* Retailer Support Chat for Price Match Refund */}
               {radar.direct_support_url && (
                 <a
                   href={radar.direct_support_url}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-cyan-glow/20 px-3.5 py-2 text-xs font-semibold text-cyan-glow hover:bg-cyan-glow/30 transition shadow-sm"
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-glass border border-line px-3.5 py-2 text-xs font-medium text-fg hover:border-cyan-glow/40 hover:text-cyan-glow transition shadow-sm"
+                  title="Open Customer Service Chat to paste your price-match refund script"
                 >
-                  <span>Open {radar.support_channel_name || purchase.retailer || 'Support'} Chat</span>
+                  <span>Chat with {radar.support_channel_name || purchase.retailer || 'Support'}</span>
                   <Icon name="externalLink" size={13} />
                 </a>
               )}
