@@ -1,11 +1,11 @@
-# ClaimGuard AI — Comprehensive Project Document & Product Guide
+# Warranty Radar — Comprehensive Project Document & Product Guide
 *Smart Warranty, Festival Price Drop Refund & Consumer Rights Radar for India*
 
 ---
 
 ## 1. Executive Summary
 
-**ClaimGuard AI** is India's first autonomous consumer protection platform. It monitors your purchases across major retailers (Amazon India, Flipkart, Meesho, Croma, Apple, etc.), tracks warranty expiration dates, automatically scans for festival price drops during sales (Diwali, Big Billion Days) to secure price-match refunds, and empowers Indian consumers with a **1-click Legal Notice Generator** backed by the **Consumer Protection Act, 2019** whenever a brand unfairly delays or rejects a warranty claim.
+**Warranty Radar** is India's first autonomous consumer protection platform. It monitors your purchases across major retailers (Amazon India, Flipkart, Meesho, Croma, Apple, etc.), tracks warranty expiration dates, automatically scans for festival price drops during sales (Diwali, Big Billion Days) to secure price-match refunds, and empowers Indian consumers with a **1-click Legal Notice Generator** backed by the **Consumer Protection Act, 2019** whenever a brand unfairly delays or rejects a warranty claim.
 
 ---
 
@@ -28,9 +28,9 @@ Apps like **OneAssist, Onsitego, Cashify**, and OEM service apps (Samsung Care+,
 
 ---
 
-### 2.3 Comparison Matrix: India vs. USA/China vs. ClaimGuard AI
+### 2.3 Comparison Matrix: India vs. USA/China vs. Warranty Radar
 
-| Dimension | Typical Indian Apps (OneAssist, Onsitego, etc.) | USA / China Benchmarks (DoNotPay, Earny, JD.com) | **ClaimGuard AI (Our System)** |
+| Dimension | Typical Indian Apps (OneAssist, Onsitego, etc.) | USA / China Benchmarks (DoNotPay, Earny, JD.com) | **Warranty Radar (Our System)** |
 | :--- | :--- | :--- | :--- |
 | **Receipt Collection** | Manual typing and manual photo uploads. | Automated mailbox & digital wallet scanning. | **Zero-touch Gmail OAuth auto-sync** + PDF/photo invoice parser. |
 | **Price Drop Refunds** | Not available. | Automated price-match claims (Earny, JD.com). | **Festival Price Drop Radar** + 1-click price-adjustment script. |
@@ -42,9 +42,9 @@ Apps like **OneAssist, Onsitego, Cashify**, and OEM service apps (Samsung Care+,
 
 ---
 
-## 3. Comprehensive Feature Suite of ClaimGuard AI
+## 3. Comprehensive Feature Suite of Warranty Radar
 
-ClaimGuard AI packages 11 core features that provide complete protection throughout the product lifecycle:
+Warranty Radar packages 11 core features that provide complete protection throughout the product lifecycle:
 
 ### Feature 1: Zero-Touch Gmail Purchase Tracker
 - Connects directly to your Gmail account via secure Google Cloud OAuth 2.0 (`gmail.readonly`).
@@ -105,7 +105,7 @@ ClaimGuard AI packages 11 core features that provide complete protection through
 
 ## 4. System Architecture & End-to-End Data Flow
 
-The following sequence illustrates how ClaimGuard AI processes incoming data and delivers consumer protection:
+The following sequence illustrates how Warranty Radar processes incoming data and delivers consumer protection:
 
 ```mermaid
 sequenceDiagram
@@ -222,5 +222,5 @@ sequenceDiagram
 * **e-Jagriti (formerly e-Daakhil)**: The official unified portal launched by the Department of Consumer Affairs, Government of India (`e-jagriti.gov.in`) enabling citizens to file consumer complaints online directly to District, State, or National Consumer Commissions without physically visiting a consumer court.
 
 ---
-*Document Version: 1.0.0 — ClaimGuard AI Product Documentation*
+*Document Version: 1.0.0 — Warranty Radar Product Documentation*
 
