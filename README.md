@@ -3,9 +3,7 @@
 Automatically tracks purchases from Gmail order-confirmation emails and uploaded
 documents (invoices, warranty cards), extracts product/warranty/return-window
 information, stores it in a structured database, schedules expiry alerts,
-and answers natural-language warranty queries via a built-in AI agent.
-
-> **Milestone 5 complete** — Warranty agent + automated tracking + 4-screen dashboard + 100-test validation suite + production deployment (Railway + Netlify).
+and answers natural-language warranty queries via a built-in AI agent
 
 ---
 
