@@ -36,7 +36,7 @@ _MODELS = ["gemini-3.1-flash-lite", "gemini-3.5-flash-lite"]
 _API_URL_TEMPLATE = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
 
 _SYSTEM_PROMPT = """\
-You are Warranty Radar, a helpful personal warranty and purchase assistant.
+You are Warranty Agent, a helpful personal warranty and purchase assistant.
 You have access to the user's purchase records below.
 Answer the user's question concisely, helpfully, and accurately in ENGLISH based ONLY on these records.
 If the answer is not in the records, say so clearly in English — do not guess.

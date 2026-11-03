@@ -15,8 +15,8 @@ export function Logo({ compact = false, onClick }) {
       </div>
       {!compact && (
         <div className="leading-tight">
-          <div className="font-display text-[1.08rem] font-bold tracking-tight text-aurora">Warranty Radar</div>
-          <div className="text-[0.62rem] font-semibold tracking-[0.16em] text-subtle uppercase">Purchase &amp; warranty tracker</div>
+          <div className="font-display text-[1.08rem] font-bold tracking-tight text-aurora">Warranty Agent</div>
+          <div className="text-[0.62rem] font-semibold tracking-[0.16em] text-subtle uppercase">Smart Warranty &amp; Refund Assistant</div>
         </div>
       )}
     </div>
@@ -253,12 +253,12 @@ export function Footer({ className }) {
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2 font-semibold text-fg">
             <span className="text-sm">🛡️</span>
-            <span>Warranty Radar</span>
+            <span>Warranty Agent</span>
           </div>
           <div className="text-muted">Protecting your purchases across 10+ Indian retailers</div>
         </div>
         <div className="text-[0.72rem] text-subtle">
-          © {new Date().getFullYear()} Warranty Radar. All rights reserved.
+          © {new Date().getFullYear()} Warranty Agent. All rights reserved.
         </div>
       </div>
     </footer>

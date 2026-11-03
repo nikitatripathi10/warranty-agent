@@ -229,7 +229,7 @@ export default function DashboardView({
             {greeting()}, <span className="text-aurora">{formatOwnerName(userEmail, userName)}</span>
           </h2>
           <p className="mt-1 text-xs text-muted">
-            Warranty Radar is actively monitoring your connected accounts &amp; invoices.
+            Warranty Agent is actively monitoring your connected accounts &amp; invoices.
           </p>
         </div>
 
@@ -487,7 +487,7 @@ export default function DashboardView({
                   ) : (
                     <>
                       Monitoring Amazon, Flipkart, Meesho, Croma &amp; Apple festival discounts. When prices drop within your
-                      active return windows, Warranty Radar generates 1-click refund request scripts.
+                      active return windows, Warranty Agent generates 1-click refund request scripts.
                     </>
                   )}
                 </p>

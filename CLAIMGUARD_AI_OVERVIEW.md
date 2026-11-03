@@ -1,11 +1,11 @@
-# Warranty Radar — Comprehensive Project Document & Product Guide
-*Smart Warranty, Festival Price Drop Refund & Consumer Rights Radar for India*
+# Warranty Agent — Comprehensive Project Document & Product Guide
+*Smart Warranty, Festival Price Drop Refund & Consumer Rights Assistant for India*
 
 ---
 
 ## 1. Executive Summary
 
-**Warranty Radar** is India's first autonomous consumer protection platform. It monitors your purchases across major retailers (Amazon India, Flipkart, Meesho, Croma, Apple, etc.), tracks warranty expiration dates, automatically scans for festival price drops during sales (Diwali, Big Billion Days) to secure price-match refunds, and empowers Indian consumers with a **1-click Legal Notice Generator** backed by the **Consumer Protection Act, 2019** whenever a brand unfairly delays or rejects a warranty claim.
+**Warranty Agent** is India's first autonomous consumer protection platform. It monitors your purchases across major retailers (Amazon India, Flipkart, Meesho, Croma, Apple, etc.), tracks warranty expiration dates, automatically scans for festival price drops during sales (Diwali, Big Billion Days) to secure price-match refunds, and empowers Indian consumers with a **1-click Legal Notice Generator** backed by the **Consumer Protection Act, 2019** whenever a brand unfairly delays or rejects a warranty claim.
 
 ---
 
@@ -28,23 +28,23 @@ Apps like **OneAssist, Onsitego, Cashify**, and OEM service apps (Samsung Care+,
 
 ---
 
-### 2.3 Comparison Matrix: India vs. USA/China vs. Warranty Radar
+### 2.3 Comparison Matrix: India vs. USA/China vs. Warranty Agent
 
-| Dimension | Typical Indian Apps (OneAssist, Onsitego, etc.) | USA / China Benchmarks (DoNotPay, Earny, JD.com) | **Warranty Radar (Our System)** |
+| Dimension | Typical Indian Apps (OneAssist, Onsitego, etc.) | USA / China Benchmarks (DoNotPay, Earny, JD.com) | **Warranty Agent (Our System)** |
 | :--- | :--- | :--- | :--- |
 | **Receipt Collection** | Manual typing and manual photo uploads. | Automated mailbox & digital wallet scanning. | **Zero-touch Gmail OAuth auto-sync** + PDF/photo invoice parser. |
 | **Price Drop Refunds** | Not available. | Automated price-match claims (Earny, JD.com). | **Festival Price Drop Radar** + 1-click price-adjustment script. |
 | **Warranty Denials** | None. User is left stranded. | "Robot Lawyer" statutory legal dispute letters. | **1-Click Legal Notice** citing Indian Consumer Protection Act 2019 (Sec 84–87). |
-| **Govt Dispute Redressal** | None. | Automated small claims court filing. | **Pre-formatted NCH 1915 & e-Daakhil filing packages**. |
+| **Govt Dispute Redressal** | None. | Automated small claims court filing. | **Pre-formatted NCH 1915 & e-Jagriti filing packages**. |
 | **Invoice / Slip OCR** | Rigid parser; fails on messy or thermal bills. | Vision LLMs and high-accuracy OCR. | **Hybrid 2-Tier Engine**: Instant Regex + **Google Gemini AI** + OCR. |
 | **Manufacturer Navigation**| Generic customer care numbers. | Integrated brand repair portals. | **Direct product store links** & official brand service links (HP, Apple, etc.). |
-| **Natural Language AI** | Basic keyword FAQ search. | Conversational AI concierge. | **Conversational Gemini AI agent** (strict English output). |
+| **Natural Language AI** | Basic keyword FAQ search. | Conversational AI concierge. | **Conversational Gemini AI assistant** (strict English output). |
 
 ---
 
-## 3. Comprehensive Feature Suite of Warranty Radar
+## 3. Comprehensive Feature Suite of Warranty Agent
 
-Warranty Radar packages 11 core features that provide complete protection throughout the product lifecycle:
+Warranty Agent packages 11 core features that provide complete protection throughout the product lifecycle:
 
 ### Feature 1: Zero-Touch Gmail Purchase Tracker
 - Connects directly to your Gmail account via secure Google Cloud OAuth 2.0 (`gmail.readonly`).
@@ -73,10 +73,10 @@ Warranty Radar packages 11 core features that provide complete protection throug
   - Specifically cites **Sections 84, 85, 86, and 87 of the Indian Consumer Protection Act, 2019** (Product Liability & Defective Goods).
   - Outlines the statutory liability: replacement, full refund with 18% p.a. interest, and compensation for mental harassment.
 
-### Feature 6: National Consumer Helpline (NCH 1915) & e-Daakhil Filing Package
+### Feature 6: National Consumer Helpline (NCH 1915) & e-Jagriti Filing Package
 - For unresolved grievances:
   - Automatically formats the dispute into a structured complaint draft ready for the **National Consumer Helpline (NCH 1915 / consumerhelpline.gov.in)**.
-  - Provides a checklist and step-by-step guidance for filing in District Consumer Disputes Redressal Commissions via **e-Jagriti / e-Daakhil (e-jagriti.gov.in)** without hiring an advocate.
+  - Provides a checklist and step-by-step guidance for filing in District Consumer Disputes Redressal Commissions via **e-Jagriti (e-jagriti.gov.in)** without hiring an advocate.
 
 ### Feature 7: Direct Store Listing & Official Brand Support Routing
 - Displays a direct shortcut to open the exact product listing on Amazon, Flipkart, or HP to check live sale pricing or initiate returns.
@@ -105,7 +105,7 @@ Warranty Radar packages 11 core features that provide complete protection throug
 
 ## 4. System Architecture & End-to-End Data Flow
 
-The following sequence illustrates how Warranty Radar processes incoming data and delivers consumer protection:
+The following sequence illustrates how Warranty Agent processes incoming data and delivers consumer protection:
 
 ```mermaid
 sequenceDiagram
@@ -222,5 +222,4 @@ sequenceDiagram
 * **e-Jagriti (formerly e-Daakhil)**: The official unified portal launched by the Department of Consumer Affairs, Government of India (`e-jagriti.gov.in`) enabling citizens to file consumer complaints online directly to District, State, or National Consumer Commissions without physically visiting a consumer court.
 
 ---
-*Document Version: 1.0.0 — Warranty Radar Product Documentation*
-
+*Document Version: 1.0.0 — Warranty Agent Product Documentation*

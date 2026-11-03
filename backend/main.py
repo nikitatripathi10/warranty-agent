@@ -35,7 +35,7 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):  # type: ignore[type-arg]
     """Start background scheduler on startup; shut it down cleanly on exit."""
-    logger.info("Warranty Radar backend starting up (v0.5.0 — Milestone 5 Deployment)")
+    logger.info("Warranty Agent backend starting up (v0.5.0 — Milestone 5 Deployment)")
 
     # Tables are managed by Alembic migrations; Base.metadata.create_all is NOT
     # called here to avoid bypassing migration history.
@@ -46,13 +46,13 @@ async def lifespan(app: FastAPI):  # type: ignore[type-arg]
 
     yield
 
-    logger.info("Warranty Radar backend shutting down")
+    logger.info("Warranty Agent backend shutting down")
 
 
 # ── App factory ───────────────────────────────────────────────────────────────
 
 app = FastAPI(
-    title="Warranty Radar API",
+    title="Warranty Agent API",
     description=(
         "Tracks purchases from Gmail and uploaded documents, extracts warranty data, "
         "schedules alerts, and answers natural-language queries about your purchases."
