@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect, useCallback } from 'react'
 import { motion } from 'motion/react'
 import { GlassCard, Button, EmptyState, Skeleton, Spinner, containerStagger, itemRise } from '../components/ui'
 import { fmt, fmtDate, urgencyColor } from '../lib/format'
+import { apiFetch } from '../lib/api'
 import Icon from '../components/Icon'
 
 export default function AlertsView({
@@ -28,7 +29,7 @@ export default function AlertsView({
     if (!apiBase || !userId) return
     setHistoryLoading(true)
     try {
-      const res = await fetch(`${apiBase}/alerts/history?user_id=${encodeURIComponent(userId)}`)
+      const res = await apiFetch(`${apiBase}/alerts/history?user_id=${encodeURIComponent(userId)}`)
       const data = await res.json()
       if (res.ok) setHistory(data.alerts || [])
     } catch {
@@ -42,7 +43,7 @@ export default function AlertsView({
     if (!apiBase) return
     setRecallsLoading(true)
     try {
-      const res = await fetch(`${apiBase}/alerts/recalls`)
+      const res = await apiFetch(`${apiBase}/alerts/recalls`)
       const data = await res.json()
       if (res.ok) setRecalls(Array.isArray(data) ? data : [])
     } catch {
@@ -61,7 +62,7 @@ export default function AlertsView({
     if (!apiBase || !userId) return
     setCheckingRecalls(true)
     try {
-      const res = await fetch(
+      const res = await apiFetch(
         `${apiBase}/alerts/recall-check?user_id=${encodeURIComponent(userId)}`,
         { method: 'POST' }
       )

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { motion } from 'motion/react'
 import { GlassCard, Button, Spinner } from './ui'
+import { apiFetch } from '../lib/api'
 import Icon from './Icon'
 
 /**
@@ -20,7 +21,7 @@ export default function WhatsAppLinkCard({ apiBase, userId, addToast }) {
   const loadStatus = useCallback(async () => {
     if (!userId) return
     try {
-      const res = await fetch(`${apiBase}/whatsapp/status?user_id=${encodeURIComponent(userId)}`)
+      const res = await apiFetch(`${apiBase}/whatsapp/status?user_id=${encodeURIComponent(userId)}`)
       if (!res.ok) throw new Error('status failed')
       setStatus(await res.json())
     } catch {
@@ -51,7 +52,7 @@ export default function WhatsAppLinkCard({ apiBase, userId, addToast }) {
   const generateCode = async () => {
     setBusy(true)
     try {
-      const res = await fetch(`${apiBase}/whatsapp/link-code?user_id=${encodeURIComponent(userId)}`, {
+      const res = await apiFetch(`${apiBase}/whatsapp/link-code?user_id=${encodeURIComponent(userId)}`, {
         method: 'POST',
       })
       const data = await res.json().catch(() => ({}))
@@ -68,7 +69,7 @@ export default function WhatsAppLinkCard({ apiBase, userId, addToast }) {
   const unlink = async () => {
     setBusy(true)
     try {
-      const res = await fetch(`${apiBase}/whatsapp/link?user_id=${encodeURIComponent(userId)}`, {
+      const res = await apiFetch(`${apiBase}/whatsapp/link?user_id=${encodeURIComponent(userId)}`, {
         method: 'DELETE',
       })
       if (!res.ok) throw new Error('Could not disconnect WhatsApp')

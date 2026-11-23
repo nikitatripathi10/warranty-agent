@@ -10,10 +10,12 @@ GET  /recalls                            → List all known recall records
 
 from __future__ import annotations
 
+import hmac
 import logging
+import os
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -24,7 +26,7 @@ from app.schemas import (
     RecallCheckResponse,
     RecallOut,
 )
-from app.services.alert_engine import backfill_alerts_for_user, get_upcoming_alerts
+from app.services.alert_engine import backfill_alerts_for_user, get_upcoming_alerts, run_daily_alert_check
 from app.services.recall_watcher import get_all_recalls, run_recall_check_for_user
 
 logger = logging.getLogger(__name__)
@@ -157,3 +159,19 @@ def list_recalls(db: Session = Depends(get_db)) -> list[RecallOut]:
     """Return all product recall records in the database."""
     recalls = get_all_recalls(db)
     return [RecallOut(**r) for r in recalls]
+
+
+@router.post(
+    "/cron/run-daily",
+    summary="External cron trigger for daily warranty alerts",
+    include_in_schema=False,
+)
+def trigger_daily_alerts(x_cron_secret: str | None = Header(None)) -> dict:
+    """Protected endpoint for GitHub Actions / Render Cron external daily scheduling."""
+    expected = os.getenv("CRON_SECRET", "").strip()
+    if not expected:
+        raise HTTPException(status_code=503, detail="External cron is not configured (CRON_SECRET unset)")
+    if not x_cron_secret or not hmac.compare_digest(x_cron_secret, expected):
+        raise HTTPException(status_code=403, detail="Invalid cron secret")
+    processed = run_daily_alert_check()
+    return {"status": "ok", "alerts_processed": processed}

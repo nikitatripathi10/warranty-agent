@@ -172,6 +172,7 @@ class EmailConnectResponse(BaseModel):
     email: str
     name: str
     has_gmail_connected: bool
+    access_token: Optional[str] = None
     message: str = "Connected successfully"
 
 
@@ -465,3 +466,13 @@ class ForwardingAddressOut(BaseModel):
     address: Optional[str] = None
     domain: Optional[str] = None
     verification_code: Optional[str] = None
+
+
+# ── Production hardening schemas ─────────────────────────────────────────────
+
+class InvoiceUrlResponse(BaseModel):
+    """Short-lived download link for a stored invoice (when using cloud storage)."""
+
+    purchase_id: uuid.UUID
+    url: Optional[str] = None
+    storage: str = "local"

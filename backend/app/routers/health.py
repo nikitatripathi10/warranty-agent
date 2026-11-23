@@ -48,6 +48,10 @@ def readiness_check(response: Response) -> dict:
     - Monitoring dashboards
     """
     from app.database import SessionLocal
+    from app.services.inbound_email import is_enabled as inbound_is_enabled
+    from app.services.session_auth import is_auth_enforced
+    from app.services.storage import is_cloud_storage_configured
+    from app.services.whatsapp_client import active_provider
 
     db_status = "ok"
     db_error = None
@@ -74,7 +78,11 @@ def readiness_check(response: Response) -> dict:
                 "error": db_error,
             },
             "scheduler": {
-                "status": "ok",  # APScheduler is started in lifespan; if we got here, it's running
+                "status": "ok",
             },
+            "storage": "cloud" if is_cloud_storage_configured() else "local",
+            "whatsapp": active_provider() or "disabled",
+            "inbound_email": "enabled" if inbound_is_enabled() else "disabled",
+            "auth_enforced": is_auth_enforced(),
         },
     }

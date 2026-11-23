@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { motion } from 'motion/react'
 import { GlassCard, Button, Field, ConfidenceBadge, UrgencyChip, Spinner } from '../components/ui'
+import { apiFetch } from '../lib/api'
 import { fmt, fmtDate, fmtPrice, daysUntil, parseAdditionalWarranty, getProductStoreUrl } from '../lib/format'
 import Icon from '../components/Icon'
 import LegalNoticeModal from '../components/LegalNoticeModal'
@@ -30,10 +31,46 @@ export default function DetailView({
   addToast,
 }) {
   const [showLegalModal, setShowLegalModal] = useState(false)
+  const [invoiceLoading, setInvoiceLoading] = useState(false)
   const wp = purchase.warranty_period
   const { additionalWarranty, cleanSnippet } = parseAdditionalWarranty(wp?.source_snippet)
   const returnDays = wp?.return_window_end_date ? daysUntil(wp.return_window_end_date) : null
   const warrantyDays = wp?.warranty_end_date ? daysUntil(wp.warranty_end_date) : null
+
+  async function handleViewInvoice() {
+    if (!purchase?.id || !userId) return
+    setInvoiceLoading(true)
+    try {
+      const res = await apiFetch(
+        `${apiBase}/purchases/${purchase.id}/invoice-url?user_id=${encodeURIComponent(userId)}`,
+      )
+      if (res.ok) {
+        const data = await res.json().catch(() => null)
+        if (data?.url) {
+          window.open(data.url, '_blank', 'noopener,noreferrer')
+          return
+        }
+      }
+      const fileRes = await apiFetch(
+        `${apiBase}/purchases/${purchase.id}/invoice-file?user_id=${encodeURIComponent(userId)}`,
+      )
+      if (!fileRes.ok) {
+        addToast?.(
+          'Original invoice file is no longer on this server (enable Cloudflare R2 for permanent storage).',
+          'info',
+        )
+        return
+      }
+      const blob = await fileRes.blob()
+      const blobUrl = URL.createObjectURL(blob)
+      window.open(blobUrl, '_blank', 'noopener,noreferrer')
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 60000)
+    } catch (err) {
+      addToast?.(`Could not open invoice: ${err.message}`, 'error')
+    } finally {
+      setInvoiceLoading(false)
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -168,6 +205,18 @@ export default function DetailView({
 
             {/* Action Buttons */}
             <div className="mt-6 flex flex-wrap items-center gap-3">
+              {purchase.source_file_ref && (
+                <Button
+                  variant="secondary"
+                  size="md"
+                  onClick={handleViewInvoice}
+                  disabled={invoiceLoading}
+                >
+                  {invoiceLoading ? <Spinner size={15} /> : <Icon name="file" size={15} />}
+                  <span>View Invoice</span>
+                </Button>
+              )}
+
               <Button
                 variant="secondary"
                 size="md"

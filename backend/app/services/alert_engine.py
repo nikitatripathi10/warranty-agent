@@ -219,12 +219,14 @@ def _notify_whatsapp_if_linked(
 
 # ── Daily scheduler job ───────────────────────────────────────────────────────
 
-def run_daily_alert_check() -> None:
+def run_daily_alert_check() -> int:
     """
     Daily job: process due alerts, notify linked WhatsApp users, and mark sent.
+    Returns the number of due alerts processed.
     """
     logger.info("=== Daily alert check starting ===")
     db: Session = SessionLocal()
+    processed = 0
     try:
         now = datetime.utcnow()
 
@@ -246,6 +248,7 @@ def run_daily_alert_check() -> None:
             )
             _notify_whatsapp_if_linked(db, purchase, alert)
             alert.sent = True  # Mark as sent
+            processed += 1
 
         if due_alerts:
             db.commit()
@@ -256,16 +259,25 @@ def run_daily_alert_check() -> None:
     except Exception as exc:
         logger.error("Error during daily alert check: %s", exc)
         db.rollback()
+        processed = 0
     finally:
         db.close()
     logger.info("=== Daily alert check complete ===")
+    return processed
 
 
 def start_scheduler() -> None:
     """
     Start the APScheduler background scheduler.
     Called once from FastAPI lifespan on startup.
+    Set DISABLE_INPROCESS_SCHEDULER=true when using an external cron worker.
     """
+    import os
+
+    if os.getenv("DISABLE_INPROCESS_SCHEDULER", "").strip().lower() in {"1", "true", "yes"}:
+        logger.info("APScheduler disabled via DISABLE_INPROCESS_SCHEDULER")
+        return
+
     try:
         from apscheduler.schedulers.background import BackgroundScheduler
 

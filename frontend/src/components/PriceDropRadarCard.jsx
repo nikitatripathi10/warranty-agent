@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import { GlassCard, Button, Spinner } from './ui'
 import Icon from './Icon'
 import { fmtPrice, getProductStoreUrl } from '../lib/format'
+import { apiFetch } from '../lib/api'
 
 function computeInstantRadar(purchase, manualSalePrice = null) {
   if (!purchase) return null
@@ -142,7 +143,7 @@ export default function PriceDropRadarCard({
     if (!purchase?.id || !userId) return
     try {
       const q = salePrice ? `&sale_price=${encodeURIComponent(salePrice)}` : ''
-      const res = await fetch(
+      const res = await apiFetch(
         `${apiBase}/purchases/${purchase.id}/price-radar?user_id=${encodeURIComponent(userId)}${q}`
       )
       if (res.ok) {

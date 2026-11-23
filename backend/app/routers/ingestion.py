@@ -50,6 +50,7 @@ from app.services.vendor_normalizer import normalize_vendor
 from app.services.category_fallback import apply_category_fallback
 from app.services.alert_engine import create_alerts_for_purchase
 from app.services.card_benefits import record_detected_card
+from app.services.storage import save_file as store_uploaded_file
 
 load_dotenv()
 
@@ -639,22 +640,19 @@ def process_file_bytes(
             detail=f"File is too large. Maximum allowed size is {_MAX_UPLOAD_BYTES // (1024*1024)} MB.",
         )
 
-    _UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
     safe_filename = _sanitise_filename(filename or "upload")
-    unique_filename = f"{uuid.uuid4().hex}_{safe_filename}"
-    save_path = _UPLOAD_DIR / unique_filename
-
     try:
-        save_path.write_bytes(file_bytes)
-        logger.info("Saved upload: %s (%d bytes)", save_path, len(file_bytes))
-    except OSError as exc:
-        logger.error("Failed to save uploaded file: %s", exc)
+        source_file_ref = store_uploaded_file(
+            file_bytes,
+            safe_filename,
+            content_type or "application/octet-stream",
+        )
+    except Exception as exc:
+        logger.error("Failed to store uploaded file: %s", exc)
         raise HTTPException(
             status_code=500,
             detail="Could not save the uploaded file. Please try again.",
         ) from exc
-
-    source_file_ref = str(save_path)
     is_image_upload = content_type.startswith("image/") or safe_filename.lower().endswith(
         (".jpg", ".jpeg", ".png", ".webp")
     )

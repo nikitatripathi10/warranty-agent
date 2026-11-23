@@ -10,8 +10,9 @@ import os
 from contextlib import asynccontextmanager
 
 from dotenv import load_dotenv
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 # Load .env before anything that reads env vars
 load_dotenv()
@@ -29,6 +30,17 @@ logging.basicConfig(
     datefmt="%Y-%m-%dT%H:%M:%SZ",
 )
 logger = logging.getLogger(__name__)
+
+# Optional Sentry crash & error tracking (activates only when SENTRY_DSN is set).
+_sentry_dsn = os.getenv("SENTRY_DSN", "").strip()
+if _sentry_dsn:
+    try:
+        import sentry_sdk
+
+        sentry_sdk.init(dsn=_sentry_dsn, traces_sample_rate=0.1, send_default_pii=False)
+        logger.info("Sentry monitoring enabled")
+    except ImportError:
+        logger.warning("SENTRY_DSN is set but sentry-sdk is not installed — skipping Sentry init")
 
 
 # ── Lifespan (startup / shutdown) ────────────────────────────────────────────
@@ -76,6 +88,37 @@ app = FastAPI(
     redoc_url="/redoc",
     lifespan=lifespan,
 )
+
+# ── Production Security + Rate-Limit Middleware ───────────────────────────────
+# Registered BEFORE CORSMiddleware so CORS headers are still attached even when
+# this middleware short-circuits with 401, 403, or 429.
+
+from app.services.rate_limit import check_request_rate_limit  # noqa: E402
+from app.services.session_auth import authorize_http_request  # noqa: E402
+
+
+async def production_security_middleware(request: Request, call_next):
+    auth_uid, error = authorize_http_request(request)
+    if error is not None:
+        status_code, detail = error
+        return JSONResponse(status_code=status_code, content={"detail": detail})
+
+    client_key = str(auth_uid) if auth_uid else (
+        (request.headers.get("x-forwarded-for") or "").split(",")[0].strip()
+        or (request.client.host if request.client else "unknown")
+    )
+    allowed, retry_after = check_request_rate_limit(request.method, request.url.path, client_key)
+    if not allowed:
+        return JSONResponse(
+            status_code=429,
+            headers={"Retry-After": str(retry_after)},
+            content={"detail": "Too many requests. Please slow down and try again shortly."},
+        )
+
+    return await call_next(request)
+
+
+app.middleware("http")(production_security_middleware)
 
 # ── CORS ─────────────────────────────────────────────────────────────────────
 

@@ -359,3 +359,37 @@ Lets every user forward order / invoice emails from **any** mail app to a privat
 
 Users find their address under **Upload → Forward bills by email**. The app also captures Gmail's
 one-time forwarding confirmation code and shows it next to the address.
+
+
+---
+
+## 14. Production Hardening (Session Auth, Cloud Storage, Cron & Monitoring)
+
+These settings harden the backend for real public users (zero domain required):
+
+### 1. Signed JWT Session Auth
+* **`SESSION_SECRET`**: Set a long random string on Render (`python -c "import secrets; print(secrets.token_urlsafe(32))"`). Falls back to `FERNET_KEY` if unset.
+* **`REQUIRE_AUTH_TOKEN=true`** (default): Every `/purchases`, `/alerts`, `/agent`, `/ingestion/upload`, `/ingestion/fetch-emails`, `/ingestion/forwarding-address`, and `/whatsapp/status` call requires a signed Bearer JWT or `wa_session` cookie.
+* **`DELETE /auth/gmail/account`**: Erases the user, cascaded DB records, and stored invoice files (DPDP Act 2023 compliance).
+
+### 2. Permanent Cloud Storage (Cloudflare R2 or Supabase S3)
+On Render's free tier, local `uploads/` files reset on deploy. To store invoices permanently for free (Cloudflare R2 gives 10 GB free):
+```env
+STORAGE_ENDPOINT_URL=https://<account-id>.r2.cloudflarestorage.com
+STORAGE_BUCKET=warranty-agent-invoices
+STORAGE_ACCESS_KEY_ID=<R2 access key>
+STORAGE_SECRET_ACCESS_KEY=<R2 secret key>
+STORAGE_REGION=auto
+```
+Files are stored privately (`s3://invoices/...`) and served only through short-lived 5-minute pre-signed URLs (`GET /purchases/{id}/invoice-url`).
+
+### 3. External Daily Alert Cron (GitHub Actions)
+1. Set `CRON_SECRET` on Render and optionally `DISABLE_INPROCESS_SCHEDULER=true`.
+2. In GitHub Repository → **Settings → Secrets and variables → Actions**, add:
+   * `BACKEND_URL` = `https://warranty-agent.onrender.com`
+   * `CRON_SECRET` = same secret as Render
+`.github/workflows/daily-alerts.yml` then triggers `POST /alerts/cron/run-daily` every day at `08:00 UTC`.
+
+### 4. Error & Uptime Monitoring (Free)
+* **Sentry**: Create a free Sentry Python project and set `SENTRY_DSN` on Render (`sentry-sdk` optional).
+* **UptimeRobot**: Monitor `GET https://warranty-agent.onrender.com/health/ready` every 5 minutes (also reports storage, WhatsApp, email, and auth readiness).

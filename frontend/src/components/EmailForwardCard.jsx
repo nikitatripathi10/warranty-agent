@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { GlassCard, Button, Spinner } from './ui'
+import { apiFetch } from '../lib/api'
 import Icon from './Icon'
 
 /**
@@ -21,7 +22,7 @@ export default function EmailForwardCard({ apiBase, userId, addToast }) {
   const load = useCallback(async () => {
     if (!userId) return
     try {
-      const res = await fetch(`${base}?user_id=${encodeURIComponent(userId)}`)
+      const res = await apiFetch(`${base}?user_id=${encodeURIComponent(userId)}`)
       if (!res.ok) throw new Error('load failed')
       setInfo(await res.json())
     } catch {
@@ -49,7 +50,7 @@ export default function EmailForwardCard({ apiBase, userId, addToast }) {
     if (!window.confirm('Create a new address? The current one will stop working immediately.')) return
     setBusy(true)
     try {
-      const res = await fetch(`${base}/rotate?user_id=${encodeURIComponent(userId)}`, { method: 'POST' })
+      const res = await apiFetch(`${base}/rotate?user_id=${encodeURIComponent(userId)}`, { method: 'POST' })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.detail || 'Could not create a new address')
       setInfo(data)

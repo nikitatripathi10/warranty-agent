@@ -16,11 +16,13 @@ import uuid
 from datetime import date, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import Purchase, User, WarrantyPeriod
 from app.schemas import (
+    InvoiceUrlResponse,
     LegalNoticeRequest,
     LegalNoticeResponse,
     PriceCheckRequest,
@@ -33,6 +35,12 @@ from app.schemas import (
 )
 from app.services.legal_generator import generate_legal_notice
 from app.services.price_radar import analyze_price_drop, scan_user_purchases_for_price_drops
+from app.services.storage import (
+    delete_file,
+    get_download_url,
+    is_cloud_storage_configured,
+    resolve_local_file,
+)
 from app.services.vendor_normalizer import normalize_vendor
 
 logger = logging.getLogger(__name__)
@@ -273,6 +281,52 @@ def get_all_price_drops(
 
 
 @router.get(
+    "/{purchase_id}/invoice-url",
+    response_model=InvoiceUrlResponse,
+    summary="Get a short-lived pre-signed download link for an uploaded invoice",
+)
+def get_invoice_url(
+    purchase_id: uuid.UUID,
+    user_id: uuid.UUID = Query(..., description="UUID of the user"),
+    db: Session = Depends(get_db),
+) -> InvoiceUrlResponse:
+    """Return a 5-minute pre-signed URL when invoices live in cloud object storage."""
+    purchase = _get_purchase_or_404(db, purchase_id, user_id)
+    return InvoiceUrlResponse(
+        purchase_id=purchase.id,
+        url=get_download_url(purchase.source_file_ref),
+        storage="cloud" if is_cloud_storage_configured() else "local",
+    )
+
+
+@router.get(
+    "/{purchase_id}/invoice-file",
+    summary="Download or view an uploaded invoice stored on local disk",
+)
+def get_invoice_file(
+    purchase_id: uuid.UUID,
+    user_id: uuid.UUID = Query(..., description="UUID of the user"),
+    db: Session = Depends(get_db),
+) -> FileResponse:
+    """Serve a locally stored invoice file (authenticated via session middleware)."""
+    purchase = _get_purchase_or_404(db, purchase_id, user_id)
+    path = resolve_local_file(purchase.source_file_ref)
+    if path is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Invoice file is not available on server disk",
+        )
+    name = path.name
+    if len(name) > 33 and name[32] == "_":
+        name = name[33:]
+    return FileResponse(
+        path=str(path),
+        filename=name,
+        content_disposition_type="inline",
+    )
+
+
+@router.get(
     "/{purchase_id}",
     response_model=PurchaseOut,
     summary="Get a single purchase by ID",
@@ -453,9 +507,12 @@ def delete_purchase(
     (via CASCADE foreign key).
     """
     purchase = _get_purchase_or_404(db, purchase_id, user_id)
+    file_ref = purchase.source_file_ref
     try:
         db.delete(purchase)
         db.commit()
+        if file_ref:
+            delete_file(file_ref)
         logger.info("Purchase %s deleted by user %s", purchase_id, user_id)
         return Response(status_code=204)
     except Exception as exc:

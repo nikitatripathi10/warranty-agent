@@ -28,11 +28,11 @@ import json
 import logging
 import os
 from datetime import datetime
-from urllib.parse import urlencode, urlparse
+from urllib.parse import quote, urlencode, urlparse
 
 from dotenv import load_dotenv
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from fastapi.responses import RedirectResponse, JSONResponse
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
+from fastapi.responses import RedirectResponse
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
@@ -42,6 +42,14 @@ from app.database import get_db
 from app.models import User
 from app.schemas import EmailConnectRequest, EmailConnectResponse, OAuthCallbackResponse
 from app.services.encryption import encrypt_token
+from app.services.session_auth import (
+    clear_session_cookie,
+    create_session_token,
+    extract_token_from_request,
+    set_session_cookie,
+    verify_session_token,
+)
+from app.services.storage import delete_file
 
 load_dotenv()
 
@@ -381,6 +389,7 @@ def gmail_callback(
 
     # Return user to the exact frontend origin they initiated auth from (Vercel, Netlify, or local)
     target_origin = _decode_state(state) or _fallback_origin()
+    session_token = create_session_token(user.id, user.email)
 
     params = {
         "user_id": str(user.id),
@@ -391,10 +400,14 @@ def gmail_callback(
     }
     if full_name:
         params["name"] = full_name
-    redirect_url = f"{target_origin}/?" + urlencode(params)
+    # Session JWT goes in the URL fragment (#session=...) so it is never sent in
+    # Referer headers or server access logs, plus an HttpOnly cookie for same-site hosts.
+    redirect_url = f"{target_origin}/?" + urlencode(params) + f"#session={quote(session_token)}"
     # Never log the full redirect URL: it contains the workspace token.
     logger.info("Redirecting authenticated user %s to %s", email, target_origin)
-    return RedirectResponse(url=redirect_url)
+    resp = RedirectResponse(url=redirect_url)
+    set_session_cookie(resp, session_token, secure=target_origin.startswith("https://"))
+    return resp
 
 
 @router.post(
@@ -405,6 +418,7 @@ def gmail_callback(
 def email_connect(
     body: EmailConnectRequest,
     db: Session = Depends(get_db),
+    response: Response = None,  # type: ignore[assignment]
 ) -> EmailConnectResponse:
     """
     Create a new workspace for an unused email, or reopen an existing workspace
@@ -456,10 +470,56 @@ def email_connect(
         words = [w.capitalize() for w in cleaned.split() if w]
         name = " ".join(words) if words else local_part.capitalize()
 
+    session_token = create_session_token(user.id, user.email)
+    if response is not None:
+        set_session_cookie(response, session_token, secure=False)
+
     return EmailConnectResponse(
         user_id=user.id,
         email=user.email,
         name=name,
         has_gmail_connected=bool(user.google_oauth_token_encrypted),
+        access_token=session_token,
         message="Workspace ready",
     )
+
+
+@router.delete(
+    "/account",
+    status_code=204,
+    response_class=Response,
+    summary="Permanently delete the authenticated user account and all stored data (DPDP)",
+)
+def delete_account(
+    request: Request,
+    db: Session = Depends(get_db),
+) -> Response:
+    """Erase the user's account, cascaded DB records, and stored invoice files."""
+    token = extract_token_from_request(request)
+    payload = verify_session_token(token)
+    if not payload:
+        raise HTTPException(status_code=401, detail="Authentication required to delete account.")
+
+    import uuid as _uuid
+
+    user_id = _uuid.UUID(payload["sub"])
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Account not found.")
+
+    file_refs = [p.source_file_ref for p in user.purchases if p.source_file_ref]
+    try:
+        db.delete(user)
+        db.commit()
+    except Exception as exc:
+        db.rollback()
+        logger.error("DB error deleting account %s: %s", user_id, exc)
+        raise HTTPException(status_code=500, detail="Could not delete account right now.") from exc
+
+    for ref in file_refs:
+        delete_file(ref)
+
+    resp = Response(status_code=204)
+    clear_session_cookie(resp)
+    logger.info("Deleted account and all data for user %s", user_id)
+    return resp

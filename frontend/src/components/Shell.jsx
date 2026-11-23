@@ -95,6 +95,7 @@ export function Sidebar({
   onToggleTheme,
   userEmail,
   onSignOut,
+  onDeleteAccount,
   activePalette,
   onSelectPalette,
 }) {
@@ -169,6 +170,15 @@ export function Sidebar({
         >
           <Icon name="logout" size={14} /> Switch Account / Logout
         </motion.button>
+        {onDeleteAccount && (
+          <button
+            type="button"
+            onClick={onDeleteAccount}
+            className="text-center text-[0.68rem] text-subtle transition-colors hover:text-rose-300"
+          >
+            Delete Account &amp; Data
+          </button>
+        )}
       </div>
     </motion.aside>
   )
@@ -246,7 +256,7 @@ export function MobileTabBar({ screen, onNavigate, alertCount }) {
   )
 }
 
-export function Footer({ className }) {
+export function Footer({ className, onOpenLegal }) {
   return (
     <footer className={cn('mx-auto mt-12 w-full max-w-2xl pb-8 text-xs text-subtle', className)}>
       <div className="glass rounded-2xl px-6 py-4 space-y-1.5">
@@ -257,8 +267,17 @@ export function Footer({ className }) {
           </div>
           <div className="text-muted">Protecting your purchases across 10+ Indian retailers</div>
         </div>
-        <div className="text-[0.72rem] text-subtle">
-          © {new Date().getFullYear()} Warranty Agent. All rights reserved.
+        <div className="flex flex-wrap items-center justify-between gap-2 text-[0.72rem] text-subtle">
+          <span>© {new Date().getFullYear()} Warranty Agent. All rights reserved.</span>
+          {onOpenLegal && (
+            <button
+              type="button"
+              onClick={onOpenLegal}
+              className="text-cyan-glow/90 hover:text-cyan-glow hover:underline transition"
+            >
+              Privacy Policy &amp; Terms
+            </button>
+          )}
         </div>
       </div>
     </footer>

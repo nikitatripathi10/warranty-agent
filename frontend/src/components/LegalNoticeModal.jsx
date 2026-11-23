@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
 import { GlassCard, Button, Spinner } from './ui'
+import { apiFetch } from '../lib/api'
 import Icon from './Icon'
 
 export default function LegalNoticeModal({
@@ -28,7 +29,7 @@ export default function LegalNoticeModal({
   const handleGenerate = async () => {
     setGenerating(true)
     try {
-      const res = await fetch(`${apiBase}/purchases/${purchase.id}/legal-notice`, {
+      const res = await apiFetch(`${apiBase}/purchases/${purchase.id}/legal-notice`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -203,6 +204,9 @@ export default function LegalNoticeModal({
                 <p>
                   Generates an enforceable 15-day pre-litigation notice holding the brand and seller jointly liable under
                   Sections 84-87 (Product Liability) and Section 2(11) (Deficiency in Service).
+                </p>
+                <p className="pt-1 text-[0.68rem] text-subtle/90">
+                  Self-help consumer notice template under Indian law — not formal legal advice from an advocate.
                 </p>
               </div>
 

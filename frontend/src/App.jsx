@@ -1,10 +1,12 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { ThemeContext } from './lib/theme-context'
+import { apiFetch, getSessionToken, setSessionToken, clearSessionToken } from './lib/api'
 import { useTheme, useToasts, useURLParams } from './lib/hooks'
 import Background from './components/Background'
 import { TopNav, Sidebar, MobileTopBar, MobileTabBar, Footer } from './components/Shell'
 import { ToastStack } from './components/ui'
 import FloatingAgentModal from './components/FloatingAgentModal'
+import LegalInfoModal from './components/LegalInfoModal'
 
 import LandingView from './views/LandingView'
 import DashboardView from './views/DashboardView'
@@ -212,6 +214,9 @@ export default function App() {
   // ── Navigation ──────────────────────────────────────────────────────────────
   const [screen, setScreen] = useState(() => (localStorage.getItem('wrd_user_id') ? 'dashboard' : 'connect'))
 
+  // ── Legal / Privacy Modal ───────────────────────────────────────────────────
+  const [showLegalInfoModal, setShowLegalInfoModal] = useState(false)
+
   // ── Onboarding ──────────────────────────────────────────────────────────────
   const [onboardStep, setOnboardStep] = useState(0)
   const [hasOnboarded, setHasOnboarded] = useState(() =>
@@ -284,16 +289,19 @@ export default function App() {
   // ── Boot & OAuth Handler ────────────────────────────────────────────────────
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
+    const hashParams = new URLSearchParams((window.location.hash || '').replace(/^#/, ''))
     const cbUserId = params.get('user_id')
     const cbEmail = params.get('email')
     const cbName = params.get('name')
     const cbGmail = params.get('gmail_connected')
+    const cbSession = hashParams.get('session')
     if (cbGmail === '1' || cbGmail === '0') {
       const connected = cbGmail === '1'
       localStorage.setItem('wrd_gmail_connected', cbGmail)
       setGmailConnected(connected)
     }
     if (cbUserId && cbEmail) {
+      if (cbSession) setSessionToken(cbSession)
       localStorage.setItem('wrd_user_id', cbUserId)
       localStorage.setItem('wrd_user_email', cbEmail)
       rememberWorkspace(cbEmail, cbUserId)
@@ -318,13 +326,36 @@ export default function App() {
   }, [])
 
   useEffect(() => {
-    if (isConnected) {
+    if (!isConnected) {
+      setScreen('connect')
+      return undefined
+    }
+    let cancelled = false
+    async function bootWorkspace() {
+      if (!getSessionToken() && userEmail && userId) {
+        try {
+          const res = await fetch(`${API_BASE}/auth/gmail/email-connect`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: userEmail, user_id: userId }),
+          })
+          const data = await res.json().catch(() => ({}))
+          if (res.ok && data.access_token) {
+            setSessionToken(data.access_token)
+          }
+        } catch {
+          /* let loadPurchases surface connectivity state */
+        }
+      }
+      if (cancelled) return
       setScreen('dashboard')
       loadPurchases()
       loadAlerts()
       if (!hasOnboarded) setOnboardStep(1)
-    } else {
-      setScreen('connect')
+    }
+    bootWorkspace()
+    return () => {
+      cancelled = true
     }
   }, [isConnected]) // eslint-disable-line
 
@@ -334,7 +365,7 @@ export default function App() {
     setPurchasesLoading(true)
     setPurchasesError(null)
     try {
-      const res = await fetch(`${API_BASE}/purchases?user_id=${encodeURIComponent(userId)}`)
+      const res = await apiFetch(`${API_BASE}/purchases?user_id=${encodeURIComponent(userId)}`)
       const data = await res.json()
       if (!res.ok) throw new Error(data.detail || `HTTP ${res.status}`)
       const rawList = Array.isArray(data.purchases) ? data.purchases : []
@@ -373,7 +404,7 @@ export default function App() {
       if (invalidOrDeletedIds.length > 0) {
         Promise.allSettled(
           invalidOrDeletedIds.map(id =>
-            fetch(`${API_BASE}/purchases/${id}?user_id=${encodeURIComponent(userId)}`, {
+            apiFetch(`${API_BASE}/purchases/${id}?user_id=${encodeURIComponent(userId)}`, {
               method: 'DELETE',
             })
           )
@@ -390,7 +421,7 @@ export default function App() {
     if (!userId) return
     setAlertsLoading(true)
     try {
-      const res = await fetch(`${API_BASE}/alerts?user_id=${encodeURIComponent(userId)}&days_ahead=60`)
+      const res = await apiFetch(`${API_BASE}/alerts?user_id=${encodeURIComponent(userId)}&days_ahead=60`)
       const data = await res.json()
       if (res.ok) {
         const deletedIds = getDeletedPurchaseIds(userId)
@@ -428,14 +459,14 @@ export default function App() {
     try {
       let res
       try {
-        res = await fetch(
+        res = await apiFetch(
           `${API_BASE}/ingestion/fetch-emails?user_id=${encodeURIComponent(userId)}&max_results=15`,
           { method: 'POST', signal: AbortSignal.timeout(90000) }
         )
       } catch (timeoutErr) {
         // If the HTTP connection timed out, verify if the backend saved new purchases in the DB
         try {
-          const checkRes = await fetch(
+          const checkRes = await apiFetch(
             `${API_BASE}/purchases?user_id=${encodeURIComponent(userId)}`,
             { signal: AbortSignal.timeout(15000) }
           )
@@ -546,7 +577,7 @@ export default function App() {
           ? `[Additional Warranty: ${clientExtDetails}]\n${existingSnippet}`.trim()
           : existingSnippet
 
-        const patchRes = await fetch(
+        const patchRes = await apiFetch(
           `${API_BASE}/purchases/${selectedUploadPurchaseId}?user_id=${encodeURIComponent(userId)}`,
           {
             method: 'PATCH',
@@ -607,7 +638,7 @@ export default function App() {
         if (selectedUploadPurchaseId) {
           formData.append('purchase_id', selectedUploadPurchaseId)
         }
-        return fetch(`${API_BASE}/ingestion/upload`, {
+        return apiFetch(`${API_BASE}/ingestion/upload`, {
           method: 'POST',
           body: formData,
           signal: AbortSignal.timeout(180000),
@@ -620,7 +651,7 @@ export default function App() {
       } catch (firstErr) {
         // Check if backend actually finished saving the record before a proxy timeout
         try {
-          const checkRes = await fetch(
+          const checkRes = await apiFetch(
             `${API_BASE}/purchases?user_id=${encodeURIComponent(userId)}`,
             { signal: AbortSignal.timeout(20000) }
           )
@@ -663,7 +694,7 @@ export default function App() {
 
       if (!data?.extraction?.product_name || !isGenuinePurchase(data?.purchase || data?.extraction)) {
         if (data?.purchase?.id) {
-          fetch(`${API_BASE}/purchases/${data.purchase.id}?user_id=${encodeURIComponent(userId)}`, {
+          apiFetch(`${API_BASE}/purchases/${data.purchase.id}?user_id=${encodeURIComponent(userId)}`, {
             method: 'DELETE',
           }).catch(() => { })
         }
@@ -716,7 +747,7 @@ export default function App() {
     setTestError(null)
 
     try {
-      const res = await fetch(`${API_BASE}/extraction/test`, {
+      const res = await apiFetch(`${API_BASE}/extraction/test`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: testText }),
@@ -747,7 +778,7 @@ export default function App() {
     if (editForm.family_member !== undefined) body.family_member = editForm.family_member || null
 
     try {
-      const res = await fetch(
+      const res = await apiFetch(
         `${API_BASE}/purchases/${selectedPurchase.id}?user_id=${encodeURIComponent(userId)}`,
         { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
       )
@@ -778,7 +809,7 @@ export default function App() {
     addToast('Purchase record deleted.', 'info')
 
     try {
-      await fetch(
+      await apiFetch(
         `${API_BASE}/purchases/${purchaseId}?user_id=${encodeURIComponent(userId)}`,
         { method: 'DELETE' }
       )
@@ -795,7 +826,7 @@ export default function App() {
     setAgentAnswer(null)
 
     try {
-      const res = await fetch(`${API_BASE}/agent/query`, {
+      const res = await apiFetch(`${API_BASE}/agent/query`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ user_id: userId, question: agentQuestion }),
@@ -811,11 +842,12 @@ export default function App() {
     }
   }
 
-  function handleDisconnect() {
+  function clearClientSessionState() {
     localStorage.removeItem('wrd_user_id')
     localStorage.removeItem('wrd_user_email')
     localStorage.removeItem('wrd_user_name')
     localStorage.removeItem('wrd_gmail_connected')
+    clearSessionToken()
     setUserId('')
     setUserEmail('')
     setUserName('')
@@ -824,13 +856,45 @@ export default function App() {
     setAlerts([])
     setSelectedPurchase(null)
     setScreen('connect')
+  }
+
+  function handleDisconnect() {
+    clearClientSessionState()
     addToast('Signed out. Enter your email or connect Google to continue.', 'info')
+  }
+
+  async function handleDeleteAccount() {
+    if (!userId) return
+    const confirmed = window.confirm(
+      'Permanently delete your Warranty Agent account and all saved bills, warranties, alerts, and WhatsApp links? This cannot be undone.'
+    )
+    if (!confirmed) return
+
+    try {
+      const res = await apiFetch(`${API_BASE}/auth/gmail/account`, { method: 'DELETE' })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.detail || `HTTP ${res.status}`)
+      }
+      try {
+        localStorage.removeItem(`wrd_deleted_purchases_${userId}`)
+        const map = JSON.parse(localStorage.getItem(WORKSPACE_MAP_KEY) || '{}')
+        if (userEmail) delete map[userEmail.trim().toLowerCase()]
+        localStorage.setItem(WORKSPACE_MAP_KEY, JSON.stringify(map))
+      } catch {
+        /* ignore local cache cleanup */
+      }
+      clearClientSessionState()
+      addToast('Account and all stored data permanently deleted.', 'info')
+    } catch (err) {
+      addToast(`Could not delete account: ${err.message}`, 'error')
+    }
   }
 
   async function handleDirectEmailConnect(email) {
     if (!email) return
     const workspaceId = getWorkspaceId(email)
-    const res = await fetch(`${API_BASE}/auth/gmail/email-connect`, {
+    const res = await apiFetch(`${API_BASE}/auth/gmail/email-connect`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, user_id: workspaceId || undefined }),
@@ -839,6 +903,7 @@ export default function App() {
     if (!res.ok) {
       throw new Error(data.detail || 'Could not connect email workspace.')
     }
+    if (data.access_token) setSessionToken(data.access_token)
     rememberWorkspace(data.email, data.user_id)
     localStorage.setItem('wrd_user_id', data.user_id)
     localStorage.setItem('wrd_user_email', data.email)
@@ -949,7 +1014,7 @@ export default function App() {
               onTestExtraction={handleExtractionTest}
             />
           </main>
-          <Footer className="px-4" />
+          <Footer className="px-4" onOpenLegal={() => setShowLegalInfoModal(true)} />
         </div>
       )}
 
@@ -969,6 +1034,7 @@ export default function App() {
             onToggleTheme={toggleTheme}
             userEmail={userEmail}
             onSignOut={handleDisconnect}
+            onDeleteAccount={handleDeleteAccount}
             activePalette={activePalette}
             onSelectPalette={handleSelectPalette}
           />
@@ -1146,7 +1212,7 @@ export default function App() {
                 />
               )}
 
-              <Footer />
+              <Footer onOpenLegal={() => setShowLegalInfoModal(true)} />
             </div>
           </main>
 
@@ -1164,6 +1230,9 @@ export default function App() {
 
       {/* Floating assistant (signed-in users only; answers come from the backend) */}
       {isConnected && <FloatingAgentModal apiBase={API_BASE} userId={userId} />}
+
+      {/* Privacy Policy & Terms Modal */}
+      <LegalInfoModal isOpen={showLegalInfoModal} onClose={() => setShowLegalInfoModal(false)} />
     </ThemeContext.Provider>
   )
 }

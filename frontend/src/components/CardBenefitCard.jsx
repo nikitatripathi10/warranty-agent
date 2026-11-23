@@ -3,6 +3,7 @@ import { motion } from 'motion/react'
 import { GlassCard, Spinner, Select } from './ui'
 import Icon from './Icon'
 import { cn } from '../lib/utils'
+import { apiFetch } from '../lib/api'
 
 const TONES = {
   extended_warranty: {
@@ -52,7 +53,7 @@ export default function CardBenefitCard({ purchase, apiBase, userId, addToast })
     setLoading(true)
     setError('')
     try {
-      const res = await fetch(`${base}/card-benefits?user_id=${encodeURIComponent(userId)}`)
+      const res = await apiFetch(`${base}/card-benefits?user_id=${encodeURIComponent(userId)}`)
       if (!res.ok) throw new Error('Could not load card benefits')
       setReport(await res.json())
     } catch (err) {
@@ -70,7 +71,7 @@ export default function CardBenefitCard({ purchase, apiBase, userId, addToast })
     setSaving(true)
     setError('')
     try {
-      const res = await fetch(`${base}/payment-card`, {
+      const res = await apiFetch(`${base}/payment-card`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ user_id: userId, card_key: cardKey || null }),

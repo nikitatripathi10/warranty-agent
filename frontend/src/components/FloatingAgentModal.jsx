@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
 import Icon from './Icon'
+import { apiFetch } from '../lib/api'
 import { Spinner } from './ui'
 
 const SUGGESTED_QUESTIONS = [
@@ -36,7 +37,7 @@ export default function FloatingAgentModal({ apiBase, userId }) {
 
     let reply
     try {
-      const res = await fetch(`${apiBase}/agent/query`, {
+      const res = await apiFetch(`${apiBase}/agent/query`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ user_id: userId, question: query }),
