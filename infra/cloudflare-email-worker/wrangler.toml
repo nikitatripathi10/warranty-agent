@@ -1,0 +1,8 @@
+name = "warranty-agent-email"
+main = "worker.js"
+compatibility_date = "2024-11-01"
+
+# Set the two secrets once (they are not stored in this file):
+#   npx wrangler secret put WEBHOOK_URL            -> https://<your-backend>/ingestion/inbound-email
+#   npx wrangler secret put INBOUND_EMAIL_SECRET   -> same value as the backend's INBOUND_EMAIL_SECRET
+

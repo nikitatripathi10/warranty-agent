@@ -5,6 +5,7 @@ import { fmt, fmtDate, fmtPrice, daysUntil, parseAdditionalWarranty, getProductS
 import Icon from '../components/Icon'
 import LegalNoticeModal from '../components/LegalNoticeModal'
 import PriceDropRadarCard from '../components/PriceDropRadarCard'
+import CardBenefitCard from '../components/CardBenefitCard'
 
 export default function DetailView({
   purchase,
@@ -54,7 +55,7 @@ export default function DetailView({
           <div>
             <div className="mb-1 flex items-center gap-2">
               <span className="grid size-7 place-items-center rounded-lg bg-glass text-sm">
-                {purchase.source_type === 'email' ? '📧' : '📄'}
+                {{ email: '📧', whatsapp: '💬' }[purchase.source_type] || '📄'}
               </span>
               <span className="text-xs font-semibold uppercase tracking-wider text-muted">
                 {fmt(purchase.retailer || purchase.brand, '')}
@@ -287,6 +288,14 @@ export default function DetailView({
           </div>
         )}
       </GlassCard>
+
+      {/* ── Credit-card perks (free extended warranty / purchase protection) ── */}
+      <CardBenefitCard
+        purchase={purchase}
+        apiBase={apiBase}
+        userId={userId}
+        addToast={addToast}
+      />
 
       {/* ── Festival Sale Price Drop Refund Radar ─────────────────────── */}
       <PriceDropRadarCard

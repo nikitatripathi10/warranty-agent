@@ -293,3 +293,69 @@ rm -rf backend/frontend_dist && cp -r frontend/dist backend/frontend_dist
 The directory is generated output (see `.gitattributes`) - never edit those files
 by hand. Docker builds ignore the checked-in copy and build the SPA fresh in the
 image.
+
+
+---
+
+## 12. WhatsApp Bot Setup (Optional)
+
+You can turn on **"Add bills from WhatsApp"** (plus proactive WhatsApp warranty-expiry reminders) using **either** Twilio (no Facebook account needed) or Meta Cloud API directly.
+
+### Option A: Twilio WhatsApp Sandbox (Recommended — No Facebook Account Required)
+
+1. Sign up for a free trial at [twilio.com](https://www.twilio.com/) using only your email and phone number (no credit card or Facebook account needed).
+2. In the Twilio Console open **Messaging → Try it out → Send a WhatsApp message**. Note your sandbox number (`+1 415 523 8886`) and two-word join code (e.g. `join alpha-beta`).
+3. On your **Render / Railway** backend, set:
+   ```env
+   TWILIO_ACCOUNT_SID=<Account SID from Twilio Console home>
+   TWILIO_AUTH_TOKEN=<Auth Token from Twilio Console home>
+   TWILIO_WHATSAPP_NUMBER=14155238886
+   TWILIO_SANDBOX_JOIN_CODE=<your join phrase, e.g. join alpha-beta>
+   TWILIO_WEBHOOK_URL=https://<your-backend-domain>/whatsapp/twilio-webhook
+   ```
+4. Back in Twilio Console → **Messaging → Settings → WhatsApp sandbox settings**:
+   - Set **When a message comes in** to `https://<your-backend-domain>/whatsapp/twilio-webhook` (`HTTP POST`) and click **Save**.
+5. Any user can now open **Upload → Link my WhatsApp**, send the join phrase + `LINK <code>`, and forward bills directly in WhatsApp. *(Note: Sandbox connections expire every 72 hours — users simply resend the join phrase to reconnect.)*
+
+### Option B: Meta WhatsApp Business Cloud API (Unlimited Public Production)
+
+1. Open [Meta for Developers](https://developers.facebook.com/), create (or select) an app, and add the **WhatsApp** product.
+2. In **WhatsApp → API Setup**, generate a permanent System User access token and copy your **Phone Number ID**.
+3. Set the following backend environment variables (and redeploy / restart):
+   ```env
+   WHATSAPP_ACCESS_TOKEN=<permanent Meta Graph API token>
+   WHATSAPP_PHONE_NUMBER_ID=<Meta phone number ID>
+   WHATSAPP_APP_SECRET=<Meta App Secret from App Settings → Basic>
+   WHATSAPP_VERIFY_TOKEN=<any random string you pick>
+   WHATSAPP_BOT_NUMBER=<bot phone digits with country code, e.g. 919876543210>
+   WHATSAPP_GRAPH_VERSION=v21.0
+   ```
+4. In **WhatsApp → Configuration → Webhook**:
+   - **Callback URL**: `https://<your-backend-domain>/whatsapp/webhook`
+   - **Verify Token**: the exact `WHATSAPP_VERIFY_TOKEN` you set above
+   - Click **Verify and Save**, then subscribe to the **`messages`** webhook field.
+
+*(Database note: run `alembic upgrade head` if using manual migrations; `main.py` also ensures `whatsapp_links` and `purchase_payment_methods` exist via `CREATE TABLE IF NOT EXISTS` on startup.)*
+
+
+---
+
+## 13. Forward-to-Email Setup (Optional)
+
+Lets every user forward order / invoice emails from **any** mail app to a private address
+(`bills+<token>@your-domain`). No Gmail OAuth, so no Google security audit is needed.
+
+1. Buy a domain (a `.in` domain is roughly ₹500-800/year) and add it to a free Cloudflare account.
+2. Enable **Email → Email Routing** in Cloudflare.
+3. Deploy the worker in `infra/cloudflare-email-worker/` (steps in its `README.md`) and point the
+   catch-all routing rule at it.
+4. Set on the backend (Render → Environment):
+   ```env
+   INBOUND_EMAIL_DOMAIN=warrantyagent.in
+   INBOUND_EMAIL_SECRET=<the same long random string stored in the worker>
+   ```
+5. Run `alembic upgrade head` if you migrate manually (`main.py` also creates the `email_inboxes`
+   table on startup with `CREATE TABLE IF NOT EXISTS`).
+
+Users find their address under **Upload → Forward bills by email**. The app also captures Gmail's
+one-time forwarding confirmation code and shows it next to the address.

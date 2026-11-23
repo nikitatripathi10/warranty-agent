@@ -61,6 +61,12 @@ class User(Base):
     purchases: Mapped[list["Purchase"]] = relationship(
         "Purchase", back_populates="user", cascade="all, delete-orphan"
     )
+    whatsapp_link: Mapped[Optional["WhatsAppLink"]] = relationship(
+        "WhatsAppLink", back_populates="user", uselist=False, cascade="all, delete-orphan"
+    )
+    email_inbox: Mapped[Optional["EmailInbox"]] = relationship(
+        "EmailInbox", back_populates="user", uselist=False, cascade="all, delete-orphan"
+    )
 
     def __repr__(self) -> str:  # pragma: no cover
         return f"<User id={self.id} email={self.email!r}>"
@@ -138,6 +144,12 @@ class Purchase(Base):
     )
     alerts: Mapped[list["Alert"]] = relationship(
         "Alert", back_populates="purchase", cascade="all, delete-orphan"
+    )
+    payment_method: Mapped[Optional["PurchasePaymentMethod"]] = relationship(
+        "PurchasePaymentMethod",
+        back_populates="purchase",
+        uselist=False,
+        cascade="all, delete-orphan",
     )
 
     def __repr__(self) -> str:  # pragma: no cover
@@ -236,3 +248,129 @@ class Recall(Base):
 
     def __repr__(self) -> str:  # pragma: no cover
         return f"<Recall id={self.id} brand={self.brand!r} model={self.product_model!r}>"
+
+
+# ── WhatsApp bot + credit-card benefit tables ────────────────────────────────
+# These two tables are intentionally *new tables* (no new columns on existing
+# tables) so they can be created safely with CREATE TABLE IF NOT EXISTS on a
+# live database that is migrated manually. See main.py lifespan + migration 0004.
+
+
+class WhatsAppLink(Base):
+    """
+    Links one WhatsApp number to one workspace (user).
+
+    A row starts life as a pending link (``link_code`` set, ``phone_number``
+    NULL). When the user sends ``LINK <code>`` from WhatsApp, the number is
+    bound and the code is cleared, which proves the sender controls the account.
+    """
+
+    __tablename__ = "whatsapp_links"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+        index=True,
+    )
+    phone_number: Mapped[Optional[str]] = mapped_column(
+        String(20),
+        nullable=True,
+        unique=True,
+        index=True,
+        comment="WhatsApp number as digits only, with country code (e.g. 919876543210)",
+    )
+    link_code: Mapped[Optional[str]] = mapped_column(String(12), nullable=True, index=True)
+    link_code_expires_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=False), nullable=True
+    )
+    linked_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=False), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=False), default=datetime.utcnow, server_default=func.now()
+    )
+
+    user: Mapped["User"] = relationship("User", back_populates="whatsapp_link")
+
+    def __repr__(self) -> str:  # pragma: no cover
+        return f"<WhatsAppLink user={self.user_id} linked={self.phone_number is not None}>"
+
+
+class PurchasePaymentMethod(Base):
+    """
+    Which credit card paid for a purchase — drives the card-benefit matcher.
+
+    Only the issuer, an optional catalogue card key, the last four digits and a
+    short evidence snippet are stored. Raw invoice/email text is never stored.
+    ``source`` is 'detected' (found in the invoice) or 'manual' (user picked it).
+    """
+
+    __tablename__ = "purchase_payment_methods"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    purchase_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("purchases.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+        index=True,
+    )
+    issuer: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    card_key: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    last4: Mapped[Optional[str]] = mapped_column(String(4), nullable=True)
+    source: Mapped[str] = mapped_column(String(20), nullable=False, default="detected")
+    evidence: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=False), default=datetime.utcnow, server_default=func.now()
+    )
+
+    purchase: Mapped["Purchase"] = relationship("Purchase", back_populates="payment_method")
+
+    def __repr__(self) -> str:  # pragma: no cover
+        return f"<PurchasePaymentMethod purchase={self.purchase_id} card={self.card_key!r}>"
+
+
+class EmailInbox(Base):
+    """
+    A user's private forwarding address: ``bills+<inbox_token>@<INBOUND_EMAIL_DOMAIN>``.
+
+    Forwarding an order / invoice email there saves it to the user's vault - no
+    Gmail OAuth and no Google security audit needed. The token is unguessable and
+    can be rotated at any time.
+
+    ``verification_code`` holds the most recent Gmail "forwarding confirmation"
+    code, because Gmail will not auto-forward until the user enters that code.
+    """
+
+    __tablename__ = "email_inboxes"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+        index=True,
+    )
+    inbox_token: Mapped[str] = mapped_column(String(32), nullable=False, unique=True, index=True)
+    verification_code: Mapped[Optional[str]] = mapped_column(String(16), nullable=True)
+    verification_received_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=False), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=False), default=datetime.utcnow, server_default=func.now()
+    )
+
+    user: Mapped["User"] = relationship("User", back_populates="email_inbox")
+
+    def __repr__(self) -> str:  # pragma: no cover
+        return f"<EmailInbox user={self.user_id}>"

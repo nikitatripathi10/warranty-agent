@@ -43,6 +43,7 @@ Required JSON schema:
   "price": number or null,
   "warranty_period_months": integer or null,
   "return_window_days": integer or null,
+  "payment_method": string or null,
   "confidence": "high" | "medium" | "low"
 }
 
@@ -60,6 +61,7 @@ Rules:
    them using the same English-keyed JSON schema above. Translate product names and brands
    to their standard English/brand-name form where possible; if not possible, transliterate.
    All string values in the output JSON must be in English — never output Devanagari or Hindi script.
+10. "payment_method": if the bill shows a credit or charge card payment line (e.g. "HDFC Bank Regalia Credit Card ending 4021"), copy that short payment line; otherwise null.
 """
 
 _FEW_SHOT_EXAMPLES = """\
@@ -217,6 +219,10 @@ def _parse_llm_response(raw: str, model_name: str = "gemini-3.1-flash-lite") -> 
             result.return_window_days = int(raw_days)
         except (TypeError, ValueError):
             pass
+
+    payment_method = _str_or_none(data.get("payment_method"))
+    if payment_method:
+        result.payment_text = payment_method
 
     result.source_snippet = f"[Gemini Vision AI — {model_name}]"
     logger.info(

@@ -44,7 +44,7 @@ export default function PurchaseCard({ purchase, onSelect, onDelete }) {
           <div className="mb-3 flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 truncate">
               <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-glass text-base">
-                {purchase.source_type === 'email' ? '📧' : '📄'}
+                {{ email: '📧', whatsapp: '💬' }[purchase.source_type] || '📄'}
               </span>
               <span className="truncate text-xs font-semibold uppercase tracking-wider text-muted">
                 {fmt(purchase.retailer || purchase.brand, '')}

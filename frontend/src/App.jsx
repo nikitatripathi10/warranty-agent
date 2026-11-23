@@ -1123,6 +1123,9 @@ export default function App() {
                   uploadResult={uploadResult}
                   uploadError={uploadError}
                   onUpload={handleUpload}
+                  apiBase={API_BASE}
+                  userId={userId}
+                  addToast={addToast}
                 />
               )}
 

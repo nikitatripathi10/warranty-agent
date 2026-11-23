@@ -2,6 +2,8 @@ import { useState, useRef } from 'react'
 import { motion } from 'motion/react'
 import { GlassCard, Button, Spinner, Notice, Field, Textarea, Select } from '../components/ui'
 import ResultGrid from '../components/ResultGrid'
+import WhatsAppLinkCard from '../components/WhatsAppLinkCard'
+import EmailForwardCard from '../components/EmailForwardCard'
 import Icon from '../components/Icon'
 
 export default function UploadView({
@@ -21,6 +23,9 @@ export default function UploadView({
   uploadResult,
   uploadError,
   onUpload,
+  apiBase,
+  userId,
+  addToast,
 }) {
   const [dragoverStd, setDragoverStd] = useState(false)
   const [dragoverAdd, setDragoverAdd] = useState(false)
@@ -44,6 +49,13 @@ export default function UploadView({
           Upload your Manufacturer / Standard Warranty document and/or Additional / Extended Warranty document, or manually enter additional warranty details.
         </p>
       </div>
+
+      {apiBase && userId && (
+        <div className="grid gap-6 lg:grid-cols-2">
+          <WhatsAppLinkCard apiBase={apiBase} userId={userId} addToast={addToast} />
+          <EmailForwardCard apiBase={apiBase} userId={userId} addToast={addToast} />
+        </div>
+      )}
 
       <GlassCard beam beamColors={['#8b5cf6', '#22d3ee']} className="p-6 sm:p-8 space-y-6">
         {/* ── Dual Separate Document Upload Areas ─────────────────────────── */}

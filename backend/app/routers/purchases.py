@@ -163,7 +163,7 @@ def _urgency_days(purchase: Purchase) -> int:
 )
 def list_purchases(
     user_id: uuid.UUID = Query(..., description="UUID of the user"),
-    source_type: str | None = Query(None, description="Filter by source: 'email' or 'upload'"),
+    source_type: str | None = Query(None, description="Filter by source: 'email', 'upload', or 'whatsapp'"),
     sort_by: str = Query("urgency", description="Sort order: 'urgency' | 'date' | 'created'"),
     db: Session = Depends(get_db),
 ) -> PurchasesListResponse:

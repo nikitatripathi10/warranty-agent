@@ -26,7 +26,7 @@ export default function PurchaseListItem({ purchase, onSelect, onDelete }) {
     >
       <div className="flex items-center gap-3 min-w-0">
         <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-glass text-lg">
-          {purchase.source_type === 'email' ? '📧' : '📄'}
+          {{ email: '📧', whatsapp: '💬' }[purchase.source_type] || '📄'}
         </span>
         <div className="min-w-0">
           <h4 className="truncate text-sm font-semibold text-fg group-hover:text-cyan-glow transition-colors">

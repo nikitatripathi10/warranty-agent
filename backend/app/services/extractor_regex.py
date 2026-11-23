@@ -45,6 +45,9 @@ class ExtractionResult:
     confidence: str = "low"          # 'high' | 'medium' | 'low'
     source_snippet: Optional[str] = None
     pass_used: str = "regex"
+    # In-memory only (never persisted): the document text, so the payment-card
+    # detector can look for "HDFC Bank Credit Card ending 4021" after extraction.
+    payment_text: Optional[str] = None
 
 
 # ── Known brands & retailers for automatic detection ─────────────────────────

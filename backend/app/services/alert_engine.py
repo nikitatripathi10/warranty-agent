@@ -115,14 +115,113 @@ def backfill_alerts_for_user(db: Session, user_id) -> int:
     return total
 
 
+# ── WhatsApp proactive notifications ─────────────────────────────────────────
+
+def _format_whatsapp_alert(db: Session, purchase: Purchase, alert: Alert) -> str:
+    """Build a concise WhatsApp reminder for a due warranty, return, or recall alert."""
+    from app.services.card_benefits import build_card_report, get_payment_method
+
+    today = date.today()
+    product = purchase.product_name or "Your product"
+    vendor = purchase.retailer or purchase.brand
+    vendor_part = f" ({vendor})" if vendor else ""
+    wp = purchase.warranty_period
+
+    if alert.alert_type == "return_window_expiry":
+        deadline = (wp.return_window_end_date if wp else None) or alert.fire_date.date()
+        date_str = deadline.strftime("%d %b %Y")
+        days_left = (deadline - today).days
+        when = (
+            f"closes on {date_str} ({days_left} day(s) left)"
+            if days_left >= 0
+            else f"closed on {date_str}"
+        )
+        return (
+            f"↩️ Return window reminder: {product}{vendor_part} return window {when}.\n"
+            "Check Warranty Agent for Festival Price Drop refund scripts before closing."
+        )
+
+    if alert.alert_type == "recall":
+        return (
+            f"⚠️ Product recall notice: {product}{vendor_part} matched an official recall advisory.\n"
+            "Open Warranty Agent for claim details."
+        )
+
+    # Default: warranty_expiry
+    deadline = (wp.warranty_end_date if wp else None) or alert.fire_date.date()
+    date_str = deadline.strftime("%d %b %Y")
+    days_left = (deadline - today).days
+    when = (
+        f"expires on {date_str} ({days_left} day(s) left)"
+        if days_left >= 0
+        else f"expired on {date_str}"
+    )
+    lines = [f"⏰ Warranty reminder: {product}{vendor_part} warranty {when}."]
+
+    row = get_payment_method(db, purchase.id)
+    if row is not None:
+        report = build_card_report(purchase, row, today=today)
+        benefit = report.benefit
+        if benefit.status == "extended_warranty" and benefit.extension_months:
+            until = f" (until {benefit.extended_warranty_end})" if benefit.extended_warranty_end else ""
+            lines.append(
+                f"💳 Good news: your {benefit.card_label} card may add +{benefit.extension_months} months "
+                f"free cover{until} — open Warranty Agent for claim steps."
+            )
+        elif benefit.status == "needs_card" and report.detected_card and report.detected_card.issuer_label:
+            lines.append(
+                f"💳 Paid with a {report.detected_card.issuer_label} credit card — open Warranty Agent "
+                "to check free extended-warranty perks."
+            )
+
+    return "\n".join(lines)
+
+
+def _notify_whatsapp_if_linked(
+    db: Session,
+    purchase: Optional[Purchase],
+    alert: Alert,
+) -> bool:
+    """
+    Send a WhatsApp reminder if the bot is configured and the purchase owner
+    has linked their WhatsApp number. Failures are logged and never block alerts.
+    """
+    if purchase is None:
+        return False
+
+    from app.models import WhatsAppLink
+    from app.services.whatsapp_client import get_active_client, is_configured
+
+    if not is_configured():
+        return False
+
+    link = (
+        db.query(WhatsAppLink)
+        .filter(WhatsAppLink.user_id == purchase.user_id, WhatsAppLink.phone_number.isnot(None))
+        .first()
+    )
+    if link is None or not link.phone_number:
+        return False
+
+    try:
+        message = _format_whatsapp_alert(db, purchase, alert)
+        get_active_client().send_text(link.phone_number, message)
+        return True
+    except Exception as exc:  # noqa: BLE001 - notification error must never break alert loop
+        logger.warning(
+            "Failed to send WhatsApp alert %s for purchase %s: %s",
+            alert.id,
+            purchase.id,
+            exc,
+        )
+        return False
+
+
 # ── Daily scheduler job ───────────────────────────────────────────────────────
 
 def run_daily_alert_check() -> None:
     """
-    Daily job: backfill alerts for all users, then log upcoming due alerts.
-
-    In a future milestone this will send actual email/push notifications.
-    For now it marks alerts as 'processed' and logs them.
+    Daily job: process due alerts, notify linked WhatsApp users, and mark sent.
     """
     logger.info("=== Daily alert check starting ===")
     db: Session = SessionLocal()
@@ -145,6 +244,7 @@ def run_daily_alert_check() -> None:
                 product,
                 alert.fire_date.date(),
             )
+            _notify_whatsapp_if_linked(db, purchase, alert)
             alert.sent = True  # Mark as sent
 
         if due_alerts:

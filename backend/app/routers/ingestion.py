@@ -49,6 +49,7 @@ from app.services.ocr import extract_text
 from app.services.vendor_normalizer import normalize_vendor
 from app.services.category_fallback import apply_category_fallback
 from app.services.alert_engine import create_alerts_for_purchase
+from app.services.card_benefits import record_detected_card
 
 load_dotenv()
 
@@ -229,6 +230,9 @@ def _run_extraction_pipeline(
         if final_result.return_window_days is None:
             final_result.return_window_days = fallback["return_window_days"]
 
+    # Kept in memory only so _persist_purchase can look for the paying credit card.
+    payment_parts = [p for p in (text, getattr(final_result, "payment_text", None)) if p and p.strip()]
+    final_result.payment_text = "\n".join(payment_parts) or None
     return final_result
 
 
@@ -305,6 +309,18 @@ def _find_existing_duplicate_purchase(
     return None
 
 
+def _record_payment_card(db: Session, purchase: Purchase, result: ExtractionResult) -> None:
+    """Best-effort: remember which credit card paid for this purchase (never fatal)."""
+    text = getattr(result, "payment_text", None)
+    if not text:
+        return
+    try:
+        record_detected_card(db, purchase.id, text)
+    except Exception as exc:  # noqa: BLE001 - card detection must never break ingestion
+        db.rollback()
+        logger.warning("Could not record payment card for purchase %s: %s", purchase.id, exc)
+
+
 def _persist_purchase(
     db: Session,
     user_id: uuid.UUID,
@@ -374,6 +390,7 @@ def _persist_purchase(
         db.commit()
         db.refresh(existing)
         create_alerts_for_purchase(db, existing, wp)
+        _record_payment_card(db, existing, result)
         return existing
 
     purchase = Purchase(
@@ -422,6 +439,7 @@ def _persist_purchase(
 
     # Schedule alerts for the newly persisted purchase
     create_alerts_for_purchase(db, purchase, warranty)
+    _record_payment_card(db, purchase, result)
 
     return purchase
 
@@ -596,6 +614,25 @@ async def _process_uploaded_file(
         )
 
     file_bytes = await upload_file.read()
+    return process_file_bytes(
+        file_bytes,
+        upload_file.filename or "upload",
+        upload_file.content_type or "",
+    )
+
+
+def process_file_bytes(
+    file_bytes: bytes,
+    filename: str,
+    content_type: str,
+) -> tuple[str, str, ExtractionResult, bool]:
+    """
+    Size-check, save, and extract (Gemini Vision / OCR + Regex) from raw file bytes.
+
+    Shared by the web upload endpoint and the WhatsApp bot. Returns
+    (source_file_ref, safe_filename, result, ocr_used); raises HTTPException on
+    oversize files or when the file cannot be saved.
+    """
     if len(file_bytes) > _MAX_UPLOAD_BYTES:
         raise HTTPException(
             status_code=413,
@@ -603,7 +640,7 @@ async def _process_uploaded_file(
         )
 
     _UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
-    safe_filename = _sanitise_filename(upload_file.filename or "upload")
+    safe_filename = _sanitise_filename(filename or "upload")
     unique_filename = f"{uuid.uuid4().hex}_{safe_filename}"
     save_path = _UPLOAD_DIR / unique_filename
 
@@ -618,7 +655,6 @@ async def _process_uploaded_file(
         ) from exc
 
     source_file_ref = str(save_path)
-    content_type = upload_file.content_type or ""
     is_image_upload = content_type.startswith("image/") or safe_filename.lower().endswith(
         (".jpg", ".jpeg", ".png", ".webp")
     )

@@ -334,3 +334,134 @@ class PriceRadarListResponse(BaseModel):
     festival_event: str
     items: list[PriceRadarItem]
 
+
+
+# ── Credit-card benefit matcher schemas ──────────────────────────────────────
+
+class CardOption(BaseModel):
+    """A selectable credit card in the benefit catalogue."""
+
+    key: str
+    label: str
+    issuer: str
+
+
+class DetectedCardOut(BaseModel):
+    """The card found on the invoice (or chosen by the user) for a purchase."""
+
+    issuer: Optional[str] = None
+    issuer_label: Optional[str] = None
+    card_key: Optional[str] = None
+    card_label: Optional[str] = None
+    last4: Optional[str] = None
+    source: str = "detected"
+    evidence: Optional[str] = None
+
+
+class CardBenefitOut(BaseModel):
+    """What the card may add on top of the manufacturer warranty."""
+
+    status: str = Field(
+        ...,
+        description=(
+            "'extended_warranty' | 'purchase_protection_only' | 'no_known_benefit' | "
+            "'needs_card' | 'not_eligible'"
+        ),
+    )
+    headline: str
+    card_label: Optional[str] = None
+    extension_months: int = 0
+    manufacturer_warranty_end: Optional[str] = None
+    extended_warranty_end: Optional[str] = None
+    days_until_extended_end: Optional[int] = None
+    protection_summary: Optional[str] = None
+    insurer: Optional[str] = None
+    conditions: list[str] = Field(default_factory=list)
+    claim_steps: list[str] = Field(default_factory=list)
+    disclaimer: str
+
+
+class CardBenefitReport(BaseModel):
+    """Response of GET /purchases/{id}/card-benefits."""
+
+    purchase_id: uuid.UUID
+    detected_card: Optional[DetectedCardOut] = None
+    options: list[CardOption]
+    benefit: CardBenefitOut
+
+
+class PaymentCardRequest(BaseModel):
+    """Manually choose (or clear) the credit card used for a purchase."""
+
+    user_id: uuid.UUID
+    card_key: Optional[str] = Field(
+        None, description="Catalogue key, 'other_card', or null to clear the choice"
+    )
+    last4: Optional[str] = Field(None, pattern=r"^\d{4}$")
+
+
+# ── WhatsApp bot schemas ─────────────────────────────────────────────────────
+
+class WhatsAppStatusOut(BaseModel):
+    """Link state of the WhatsApp bot for a workspace."""
+
+    configured: bool
+    linked: bool
+    phone_masked: Optional[str] = None
+    bot_number: Optional[str] = None
+    pending_code: bool = False
+    provider: Optional[str] = None
+    sandbox_join_code: Optional[str] = None
+    sandbox_join_link: Optional[str] = None
+
+
+class WhatsAppLinkCodeOut(BaseModel):
+    """A short-lived code the user sends to the bot as 'LINK <code>'."""
+
+    code: str
+    expires_in_minutes: int
+    bot_number: Optional[str] = None
+    deep_link: Optional[str] = None
+    provider: Optional[str] = None
+    sandbox_join_code: Optional[str] = None
+    sandbox_join_link: Optional[str] = None
+
+
+# ── Forward-to-email schemas ─────────────────────────────────────────────────
+
+class InboundAttachment(BaseModel):
+    """A PDF / image attached to a forwarded email (base64 encoded by the worker)."""
+
+    filename: str = "attachment"
+    content_type: str = ""
+    content_base64: str
+
+
+class InboundEmailPayload(BaseModel):
+    """Body POSTed by the Cloudflare Email Worker for every forwarded email."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    to: str = Field(..., description="Envelope recipient, e.g. bills+<token>@yourdomain.in")
+    sender: str = Field("", alias="from")
+    subject: str = ""
+    text: str = ""
+    html: str = ""
+    message_id: str = ""
+    attachments: list[InboundAttachment] = Field(default_factory=list)
+
+
+class InboundEmailResponse(BaseModel):
+    """'saved' | 'duplicate' | 'unreadable' | 'forwarding_confirmation' | 'ignored'."""
+
+    status: str
+    product_name: Optional[str] = None
+
+
+class ForwardingAddressOut(BaseModel):
+    """The user's private forwarding address and any pending Gmail confirmation code."""
+
+    enabled: bool
+    address: Optional[str] = None
+    domain: Optional[str] = None
+    verification_code: Optional[str] = None

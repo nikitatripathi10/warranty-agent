@@ -19,6 +19,7 @@ load_dotenv()
 from app.database import engine, Base  # noqa: E402 — after load_dotenv
 from app.routers import health, auth_gmail, ingestion, extraction  # noqa: E402
 from app.routers import purchases, alerts, agent  # noqa: E402
+from app.routers import card_benefits, whatsapp, inbound_email  # noqa: E402
 
 # ── Logging setup ─────────────────────────────────────────────────────────────
 
@@ -38,7 +39,20 @@ async def lifespan(app: FastAPI):  # type: ignore[type-arg]
     logger.info("Warranty Agent backend starting up (v0.5.0 — Milestone 5 Deployment)")
 
     # Tables are managed by Alembic migrations; Base.metadata.create_all is NOT
-    # called here to avoid bypassing migration history.
+    # called for existing tables to avoid bypassing migration history. The only
+    # exception: the two *new* tables added in migration 0004 are created with
+    # CREATE TABLE IF NOT EXISTS so a live database never breaks if the manual
+    # `alembic upgrade head` step is forgotten. Existing tables are never altered.
+    try:
+        from app.database import Base, engine
+        from app.models import EmailInbox, PurchasePaymentMethod, WhatsAppLink
+
+        Base.metadata.create_all(
+            bind=engine,
+            tables=[WhatsAppLink.__table__, PurchasePaymentMethod.__table__, EmailInbox.__table__],
+        )
+    except Exception as exc:  # noqa: BLE001 - never block startup on this
+        logger.warning("Could not ensure WhatsApp / card-benefit tables exist: %s", exc)
 
     # Start the daily alert scheduler
     from app.services.alert_engine import start_scheduler
@@ -101,10 +115,13 @@ app.include_router(health.router,        prefix="/health",      tags=["Health"])
 app.include_router(auth_gmail.signin_router, prefix="/auth/google", tags=["Auth"])
 app.include_router(auth_gmail.router,    prefix="/auth/gmail",  tags=["Auth"])
 app.include_router(ingestion.router,     prefix="/ingestion",   tags=["Ingestion"])
+app.include_router(inbound_email.router, prefix="/ingestion",   tags=["Inbound Email"])
 app.include_router(extraction.router,    prefix="/extraction",  tags=["Extraction"])
 app.include_router(purchases.router,     prefix="/purchases",   tags=["Purchases"])
+app.include_router(card_benefits.router, prefix="/purchases",   tags=["Card Benefits"])
 app.include_router(alerts.router,        prefix="/alerts",      tags=["Alerts"])
 app.include_router(agent.router,         prefix="/agent",       tags=["Agent"])
+app.include_router(whatsapp.router,      prefix="/whatsapp",    tags=["WhatsApp"])
 
 # ── Optional: serve the built SPA from this same process ─────────────────────
 # The Docker image copies frontend/dist here so one deploy covers API + UI.
