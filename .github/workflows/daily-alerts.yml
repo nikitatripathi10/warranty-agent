@@ -18,9 +18,25 @@ jobs:
             echo "BACKEND_URL or CRON_SECRET repo secret not configured — skipping external cron."
             exit 0
           fi
-          curl --fail --show-error --silent \
+          # 503 means CRON_SECRET has not been set on Render yet. The backend's
+          # in-process scheduler is still active, so treat that as a safe skip
+          # instead of failing the workflow every day.
+          status=$(curl --show-error --silent \
             --max-time 60 \
+            --output /dev/null \
+            --write-out "%{http_code}" \
             -X POST "${BACKEND_URL%/}/alerts/cron/run-daily" \
-            -H "X-Cron-Secret: ${CRON_SECRET}"
-          echo ""
+            -H "X-Cron-Secret: ${CRON_SECRET}") || {
+              echo "Could not reach the backend."
+              exit 1
+            }
+          echo "Daily alerts endpoint returned HTTP $status"
+          if [ "$status" = "503" ]; then
+            echo "CRON_SECRET is not configured on Render yet - skipping external cron (in-process scheduler is active)."
+            exit 0
+          fi
+          if [ "$status" -lt 200 ] || [ "$status" -ge 300 ]; then
+            echo "Unexpected response from the daily alerts endpoint."
+            exit 1
+          fi
 
