@@ -12,6 +12,10 @@ services:
         sync: false
       - key: FERNET_KEY
         sync: false
+      # Dedicated JWT signing key. Render generates a secure random value on the
+      # next Blueprint sync, so no manual dashboard step (or committed secret) is needed.
+      - key: SESSION_SECRET
+        generateValue: true
       - key: GOOGLE_CLIENT_ID
         sync: false
       - key: GOOGLE_CLIENT_SECRET
